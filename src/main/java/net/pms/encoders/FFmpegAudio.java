@@ -114,6 +114,8 @@ public class FFmpegAudio extends FFMpegVideo {
 
 		List<String> cmdList = new ArrayList<>();
 
+		cmdList.add("cmd.exe");
+		cmdList.add("/c");
 		cmdList.add(getExecutable());
 
 		cmdList.add("-loglevel");
@@ -138,6 +140,11 @@ public class FFmpegAudio extends FFMpegVideo {
 			cmdList.add("" + params.getTimeSeek());
 		}
 
+		if (params.getTimeEnd() > 0) {
+			cmdList.add("-to");
+			cmdList.add("" + params.getTimeEnd());
+		}
+
 		// Decoder threads
 		if (nThreads > 0) {
 			cmdList.add("-threads");
@@ -154,11 +161,6 @@ public class FFmpegAudio extends FFMpegVideo {
 		if (nThreads > 0) {
 			cmdList.add("-threads");
 			cmdList.add("" + nThreads);
-		}
-
-		if (params.getTimeEnd() > 0) {
-			cmdList.add("-t");
-			cmdList.add("" + params.getTimeEnd());
 		}
 
 		if (params.getMediaRenderer().isTranscodeToMP3()) {
@@ -188,7 +190,19 @@ public class FFmpegAudio extends FFMpegVideo {
 			}
 		}
 
-		cmdList.add("pipe:");
+		// cmdList.add("pipe:");
+
+		cmdList.add("-y");
+		String tempfile = "temp.wav";
+		cmdList.add(tempfile);
+
+		cmdList.add("&");
+		cmdList.add("dd");
+		cmdList.add("if=" + tempfile);
+		cmdList.add("of=-");
+		cmdList.add("&");
+		cmdList.add("del");
+		cmdList.add(tempfile);
 
 		String[] cmdArray = new String[ cmdList.size() ];
 		cmdList.toArray(cmdArray);
