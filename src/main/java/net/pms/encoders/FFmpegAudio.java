@@ -114,8 +114,8 @@ public class FFmpegAudio extends FFMpegVideo {
 
 		List<String> cmdList = new ArrayList<>();
 
-		cmdList.add("cmd.exe");
-		cmdList.add("/c");
+		// cmdList.add("cmd.exe");
+		// cmdList.add("/c");
 		cmdList.add(getExecutable());
 
 		cmdList.add("-loglevel");
@@ -193,18 +193,35 @@ public class FFmpegAudio extends FFMpegVideo {
 		// cmdList.add("pipe:");
 
 		cmdList.add("-y");
-		String tempfile = "temp.wav";
+		String tempfile = System.getenv("USERPROFILE")+"\\temp.wav";
 		cmdList.add(tempfile);
+		String[] cmdArray = new String[ cmdList.size() ];
+		cmdList.toArray(cmdArray);
+		ProcessBuilder pb = new ProcessBuilder(cmdArray);
+		Process pr = pb.start();
+		try {
+			int ret = pr.waitFor();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
-		cmdList.add("&");
+		LOGGER.debug(String.join(" ", cmdList));
+		cmdList.clear();
+
+		// cmdList.add("bash");
+		cmdList.add("cmd.exe");
+		cmdList.add("/c");
+		// cmdList.add("&");
 		cmdList.add("dd");
 		cmdList.add("if=" + tempfile);
 		cmdList.add("of=-");
+
 		cmdList.add("&");
 		cmdList.add("del");
 		cmdList.add(tempfile);
 
-		String[] cmdArray = new String[ cmdList.size() ];
+		cmdArray = new String[ cmdList.size() ];
 		cmdList.toArray(cmdArray);
 
 		ProcessWrapperImpl pw = new ProcessWrapperImpl(cmdArray, params);
