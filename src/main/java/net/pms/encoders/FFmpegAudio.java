@@ -114,8 +114,6 @@ public class FFmpegAudio extends FFMpegVideo {
 
 		List<String> cmdList = new ArrayList<>();
 
-		// cmdList.add("cmd.exe");
-		// cmdList.add("/c");
 		cmdList.add(getExecutable());
 
 		cmdList.add("-loglevel");
@@ -212,7 +210,6 @@ public class FFmpegAudio extends FFMpegVideo {
 		// cmdList.add("bash");
 		cmdList.add("cmd.exe");
 		cmdList.add("/c");
-		// cmdList.add("&");
 		cmdList.add("dd");
 		cmdList.add("if=" + tempfile);
 		cmdList.add("of=-");
