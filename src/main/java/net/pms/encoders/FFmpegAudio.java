@@ -191,7 +191,7 @@ public class FFmpegAudio extends FFMpegVideo {
 		// cmdList.add("pipe:");
 
 		cmdList.add("-y");
-		String tempfile = System.getProperty("user.home")+"\\temp.wav";
+		String tempfile = System.getProperty("user.home") + java.io.File.separator + "temp.wav";
 		cmdList.add(tempfile);
 		String[] cmdArray = new String[ cmdList.size() ];
 		cmdList.toArray(cmdArray);
@@ -209,25 +209,36 @@ public class FFmpegAudio extends FFMpegVideo {
 
 		String shellName;
 		String ddName;
+		String stdoutName;
 		if (System.getProperty("os.name").startsWith("Win")) {
 			//for Win
 			shellName = "powershell";
 			ddName = ".//dd";
-		} else {
-			//for Other(Linux like)
+			stdoutName = "-";
+		} else if(System.getProperty("os.name").startsWith("Mac")) {
 			shellName = "bash";
 			ddName = "dd";
+			stdoutName = "/dev/stdout";
+		} else {
+			//for Other(Linux)
+			shellName = "bash";
+			ddName = "dd";
+			stdoutName = "-";
 		}
 		cmdList.add(shellName);
 		cmdList.add("-c");
-		cmdList.add(ddName);
-		cmdList.add("if=" + tempfile);
-		cmdList.add("of=-");
+		
+		List<String> cmdString = new ArrayList<>();
+		
+		cmdString.add(ddName);
+		cmdString.add("if=" + tempfile);
+		cmdString.add("of=" + stdoutName);
 
-		cmdList.add(";");
-		cmdList.add("del");
-		cmdList.add(tempfile);
+		cmdString.add(";");
+		cmdString.add("rm");
+		cmdString.add(tempfile);
 
+		cmdList.add(String.join(" ",cmdString));
 		cmdArray = new String[ cmdList.size() ];
 		cmdList.toArray(cmdArray);
 
