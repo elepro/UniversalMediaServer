@@ -191,7 +191,7 @@ public class FFmpegAudio extends FFMpegVideo {
 		// cmdList.add("pipe:");
 
 		cmdList.add("-y");
-		String tempfile = System.getenv("USERPROFILE")+"\\temp.wav";
+		String tempfile = System.getProperty("user.home")+"\\temp.wav";
 		cmdList.add(tempfile);
 		String[] cmdArray = new String[ cmdList.size() ];
 		cmdList.toArray(cmdArray);
@@ -207,14 +207,24 @@ public class FFmpegAudio extends FFMpegVideo {
 		LOGGER.debug(String.join(" ", cmdList));
 		cmdList.clear();
 
-		// cmdList.add("bash");
-		cmdList.add("cmd.exe");
-		cmdList.add("/c");
-		cmdList.add("dd");
+		String shellName;
+		String ddName;
+		if (System.getProperty("os.name").startsWith("Win")) {
+			//for Win
+			shellName = "powershell";
+			ddName = ".//dd";
+		} else {
+			//for Other(Linux like)
+			shellName = "bash";
+			ddName = "dd";
+		}
+		cmdList.add(shellName);
+		cmdList.add("-c");
+		cmdList.add(ddName);
 		cmdList.add("if=" + tempfile);
 		cmdList.add("of=-");
 
-		cmdList.add("&");
+		cmdList.add(";");
 		cmdList.add("del");
 		cmdList.add(tempfile);
 
