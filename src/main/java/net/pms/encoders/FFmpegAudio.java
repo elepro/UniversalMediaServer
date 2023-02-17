@@ -221,9 +221,9 @@ public class FFmpegAudio extends FFMpegVideo {
 			stdoutName = "/dev/stdout";
 		} else {
 			//for Other(Linux)
-			shellName = "bash";
+			shellName = "ash";
 			ddName = "dd";
-			stdoutName = "-";
+			stdoutName = "/dev/stdout";
 		}
 		cmdList.add(shellName);
 		cmdList.add("-c");
