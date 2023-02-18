@@ -85,10 +85,10 @@ public class FFmpegAudio extends FFMpegVideo {
 
 	@Override
 	public synchronized ProcessWrapper launchTranscode(
-		DLNAResource dlna,
-		DLNAMediaInfo media,
-		OutputParams params
-	) throws IOException {
+			DLNAResource dlna,
+			DLNAMediaInfo media,
+			OutputParams params
+			) throws IOException {
 		UmsConfiguration prev = configuration;
 		// Use device-specific pms conf
 		configuration = params.getMediaRenderer().getUmsConfiguration();
@@ -188,58 +188,63 @@ public class FFmpegAudio extends FFMpegVideo {
 			}
 		}
 
-		// cmdList.add("pipe:");
+		if (params.getMediaRenderer().isTranscodeToWAV()) {
+			cmdList.add("-y");
+			String tempfile = System.getProperty("user.home") + java.io.File.separator + ".temp";
+			cmdList.add(tempfile);
 
-		cmdList.add("-y");
-		String tempfile = System.getProperty("user.home") + java.io.File.separator + "temp.wav";
-		cmdList.add(tempfile);
-		String[] cmdArray = new String[ cmdList.size() ];
-		cmdList.toArray(cmdArray);
-		ProcessBuilder pb = new ProcessBuilder(cmdArray);
-		Process pr = pb.start();
-		try {
-			int ret = pr.waitFor();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+			String[] cmdArray = new String[cmdList.size()];
+			cmdList.toArray(cmdArray);
+			LOGGER.debug(String.join(" ", cmdList));
+			ProcessBuilder pb = new ProcessBuilder(cmdArray);
+			Process pr = pb.start();
+			try {
+				int ret = pr.waitFor();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 
-		LOGGER.debug(String.join(" ", cmdList));
-		cmdList.clear();
+			cmdList.clear();
 
-		String shellName;
-		String ddName;
-		String stdoutName;
-		if (System.getProperty("os.name").startsWith("Win")) {
-			//for Win
-			shellName = "powershell";
-			ddName = ".//dd";
-			stdoutName = "-";
-		} else if(System.getProperty("os.name").startsWith("Mac")) {
-			shellName = "bash";
-			ddName = "dd";
-			stdoutName = "/dev/stdout";
+			String shellName;
+			String ddName;
+			String stdoutName;
+			if (System.getProperty("os.name").startsWith("Win")) {
+				// for Win
+				shellName = "powershell";
+				ddName = ".//dd";
+				stdoutName = "-";
+			} else if (System.getProperty("os.name").startsWith("Mac")) {
+				shellName = "bash";
+				ddName = "dd";
+				stdoutName = "/dev/stdout";
+			} else {
+				// for Other(Linux)
+				shellName = "ash";
+				ddName = "dd";
+				stdoutName = "/dev/stdout";
+			}
+			cmdList.add(shellName);
+			cmdList.add("-c");
+
+			List<String> cmdString = new ArrayList<>();
+
+			cmdString.add(ddName);
+			cmdString.add("if=" + tempfile);
+			cmdString.add("of=" + stdoutName);
+
+			cmdString.add(";");
+			cmdString.add("rm");
+			cmdString.add(tempfile);
+
+			cmdList.add(String.join(" ", cmdString));
+			cmdArray = new String[cmdList.size()];
+			cmdList.toArray(cmdArray);
 		} else {
-			//for Other(Linux)
-			shellName = "ash";
-			ddName = "dd";
-			stdoutName = "/dev/stdout";
+			cmdList.add("pipe:");
 		}
-		cmdList.add(shellName);
-		cmdList.add("-c");
-		
-		List<String> cmdString = new ArrayList<>();
-		
-		cmdString.add(ddName);
-		cmdString.add("if=" + tempfile);
-		cmdString.add("of=" + stdoutName);
-
-		cmdString.add(";");
-		cmdString.add("rm");
-		cmdString.add(tempfile);
-
-		cmdList.add(String.join(" ",cmdString));
-		cmdArray = new String[ cmdList.size() ];
+		String[] cmdArray = new String[cmdList.size()];
 		cmdList.toArray(cmdArray);
 
 		ProcessWrapperImpl pw = new ProcessWrapperImpl(cmdArray, params);
@@ -251,37 +256,37 @@ public class FFmpegAudio extends FFMpegVideo {
 
 	@Override
 	public boolean isCompatible(DLNAResource resource) {
-		// XXX Matching on file format isn't really enough, codec should also be evaluated
-		return (
-			PlayerUtil.isAudio(resource, Format.Identifier.AC3) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.ADPCM) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.ADTS) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.AIFF) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.APE) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.ATRAC) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.AU) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.DFF) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.DSF) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.DTS) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.EAC3) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.FLAC) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.M4A) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.MKA) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.MLP) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.MP3) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.MPA) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.MPC) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.OGA) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.RA) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.SHN) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.THREEGA) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.THREEG2A) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.THD) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.TTA) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.WAV) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.WMA) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.WV) ||
-			PlayerUtil.isWebAudio(resource)
-		);
+		// XXX Matching on file format isn't really enough, codec should also be
+		// evaluated
+		return (PlayerUtil.isAudio(resource, Format.Identifier.AC3) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.ADPCM) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.ADTS) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.AIFF) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.APE) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.ATRAC) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.AU) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.DFF) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.DSF) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.DTS) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.EAC3) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.FLAC) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.M4A) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.MKA) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.MLP) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.MP3) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.MPA) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.MPC) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.OGA) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.RA) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.SHN) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.THREEGA) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.THREEG2A) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.THD) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.TTA) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.WAV) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.WMA) ||
+				PlayerUtil.isAudio(resource, Format.Identifier.WV) ||
+				PlayerUtil.isWebAudio(resource)
+				);
 	}
 }
