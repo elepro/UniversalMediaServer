@@ -60,11 +60,11 @@
   "packageManager": "yarn@3.4.1",
   "devDependencies": {
     "@testing-library/jest-dom": "5.16.5",
-    "@testing-library/react": "13.4.0",
+    "@testing-library/react": "14.0.0",
     "@testing-library/user-event": "14.4.3",
     "@types/jest": "29.4.0",
     "@types/lodash": "4.14.191",
-    "@types/node": "18.14.2",
+    "@types/node": "18.14.5",
     "@types/react": "18.0.28",
     "@types/react-color": "3.0.6",
     "@types/react-dom": "18.0.11",
@@ -73,7 +73,7 @@
     "@types/videojs-hls-quality-selector": "1.1.0",
     "@typescript-eslint/eslint-plugin": "5.54.0",
     "@typescript-eslint/parser": "5.54.0",
-    "eslint": "8.34.0",
+    "eslint": "8.35.0",
     "eslint-plugin-react": "7.32.2",
     "react-scripts": "5.0.1"
   }
