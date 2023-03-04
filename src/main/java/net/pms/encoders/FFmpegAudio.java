@@ -216,7 +216,7 @@ public class FFmpegAudio extends FFMpegVideo {
 				ddName = ".//dd";
 				stdoutName = "-";
 			} else if (System.getProperty("os.name").startsWith("Mac")) {
-				shellName = "bash";
+				shellName = "zsh";
 				ddName = "dd";
 				stdoutName = "/dev/stdout";
 			} else {
