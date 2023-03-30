@@ -20,7 +20,7 @@
 	<artifactId>ums</artifactId>
 	<name>Universal Media Server</name>
 	<packaging>jar</packaging>
-	<version>13.3.0</version>
+	<version>13.3.0-SNAPSHOT</version>
 	<url>https://www.universalmediaserver.com/</url>
 	<inceptionYear>2012</inceptionYear>
 
@@ -91,7 +91,7 @@
 
 			Check the org.slf4j:slf4j-api version of the other libraries before upgrading
 		-->
-		<slf4j-api-version>2.0.6</slf4j-api-version>
+		<slf4j-api-version>2.0.7</slf4j-api-version>
 
 		<!--
 			ch.qos.logback:logback-classic and logback-core is shared with
@@ -573,7 +573,7 @@
 			<!-- Check the org.slf4j:slf4j-api version of the other libraries before upgrading -->
 			<!-- Check the net.java.dev.jna:jna version of the other libraries before upgrading -->
 			<!-- Check the net.java.dev.jna:jna-platform version of the other libraries before upgrading -->
-			<version>6.4.0</version>
+			<version>6.4.1</version>
 			<exclusions>
 				<exclusion>
 					<groupId>org.slf4j</groupId>
@@ -1176,7 +1176,7 @@
 					-->
 					<plugin>
 						<artifactId>maven-resources-plugin</artifactId>
-						<version>3.3.0</version>
+						<version>3.3.1</version>
 						<executions>
 							<execution>
 								<id>copy-resources</id>
@@ -3034,7 +3034,7 @@
 					</plugin>
 					<plugin>
 						<artifactId>maven-resources-plugin</artifactId>
-						<version>3.3.0</version>
+						<version>3.3.1</version>
 						<executions>
 							<execution>
 								<id>copy-resources</id>
@@ -3180,7 +3180,7 @@
 					</plugin>
 					<plugin>
 						<artifactId>maven-resources-plugin</artifactId>
-						<version>3.3.0</version>
+						<version>3.3.1</version>
 						<executions>
 							<execution>
 								<id>copy-resources</id>
@@ -3326,7 +3326,7 @@
 					<!-- Copy Web resources -->
 					<plugin>
 						<artifactId>maven-resources-plugin</artifactId>
-						<version>3.3.0</version>
+						<version>3.3.1</version>
 						<executions>
 							<execution>
 								<id>copy-resources</id>
@@ -3572,7 +3572,7 @@
 							<dependency>
 								<groupId>com.puppycrawl.tools</groupId>
 								<artifactId>checkstyle</artifactId>
-								<version>10.8.1</version>
+								<version>10.9.3</version>
 							</dependency>
 						</dependencies>
 						<configuration>
