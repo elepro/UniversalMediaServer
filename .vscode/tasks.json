@@ -11,6 +11,9 @@
 			"linux": {
 				"command": "cp -a ${workspaceFolder}/src/main/external-resources/web/. ${workspaceFolder}/web"
 			},
+			"osx": {
+				"command": "cp -a ${workspaceFolder}/src/main/external-resources/web/. ${workspaceFolder}/web"
+			},
 			"presentation": {
 				"echo": true,
 				"reveal": "never",
