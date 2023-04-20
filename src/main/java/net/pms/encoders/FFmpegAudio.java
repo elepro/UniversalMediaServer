@@ -190,10 +190,12 @@ public class FFmpegAudio extends FFMpegVideo {
 
 		if (params.getMediaRenderer().isTranscodeToWAV()) {
 			cmdList.add("-y");
-			String tempfile = String.join(java.io.File.separator,
-					System.getProperty("java.io.tmpdir").split(java.io.File.separator))
-					+ java.io.File.separator
-					+ "UMS.temp";
+			String tempfile = System.getProperty("java.io.tmpdir");
+			if(!tempfile.endsWith(java.io.File.separator))
+			{
+				tempfile += java.io.File.separator;
+			}
+			tempfile += "UMS.temp";
 			cmdList.add(tempfile);
 
 			String[] cmdArray = new String[cmdList.size()];
