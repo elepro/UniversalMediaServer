@@ -21,12 +21,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import net.pms.configuration.UmsConfiguration;
-import net.pms.dlna.DLNAMediaInfo;
 import net.pms.dlna.DLNAResource;
 import net.pms.io.IPipeProcess;
 import net.pms.io.OutputParams;
 import net.pms.io.ProcessWrapper;
 import net.pms.io.ProcessWrapperImpl;
+import net.pms.media.MediaInfo;
 import net.pms.platform.PlatformUtils;
 import net.pms.util.PlayerUtil;
 import org.slf4j.Logger;
@@ -66,14 +66,13 @@ public class YoutubeDl extends FFMpegVideo {
 	@Override
 	public synchronized ProcessWrapper launchTranscode(
 		DLNAResource dlna,
-		DLNAMediaInfo media,
+		MediaInfo media,
 		OutputParams params
 	) throws IOException {
 		params.setMinBufferSize(params.getMinFileSize());
 		params.setSecondReadMinSize(100000);
 		// Use device-specific conf
-		UmsConfiguration prev = configuration;
-		configuration = params.getMediaRenderer().getUmsConfiguration();
+		UmsConfiguration configuration = params.getMediaRenderer().getUmsConfiguration();
 		String filename = dlna.getFileName();
 		setAudioAndSubs(dlna, params);
 
@@ -150,7 +149,6 @@ public class YoutubeDl extends FFMpegVideo {
 			LOGGER.error("Thread interrupted while waiting for transcode to start", e);
 		}
 
-		configuration = prev;
 		return pw;
 	}
 

@@ -18,12 +18,12 @@ package net.pms.encoders;
 
 import java.io.IOException;
 import net.pms.configuration.UmsConfiguration;
-import net.pms.dlna.DLNAMediaInfo;
 import net.pms.dlna.DLNAResource;
 import net.pms.io.IPipeProcess;
 import net.pms.io.OutputParams;
 import net.pms.io.ProcessWrapper;
 import net.pms.io.ProcessWrapperImpl;
+import net.pms.media.MediaInfo;
 import net.pms.platform.PlatformUtils;
 import net.pms.util.PlayerUtil;
 import net.pms.util.UMSUtils;
@@ -64,8 +64,7 @@ public class MEncoderWebVideo extends MEncoderVideo {
 		return "video/mpeg";
 	}
 
-	@Override
-	protected String[] getDefaultArgs() {
+	protected String[] getDefaultArgs(UmsConfiguration configuration) {
 		int nThreads = configuration.getMencoderMaxThreads();
 		String acodec = configuration.isMencoderAc3Fixed() ? "ac3_fixed" : "ac3";
 		return new String[]{
@@ -86,22 +85,22 @@ public class MEncoderWebVideo extends MEncoderVideo {
 	@Override
 	public ProcessWrapper launchTranscode(
 		DLNAResource dlna,
-		DLNAMediaInfo media,
+		MediaInfo media,
 		OutputParams params) throws IOException {
 		// Use device-specific pms conf
-		UmsConfiguration prev = configuration;
-		configuration = params.getMediaRenderer().getUmsConfiguration();
+		UmsConfiguration configuration = params.getMediaRenderer().getUmsConfiguration();
 		params.setMinBufferSize(params.getMinFileSize());
 		params.setSecondReadMinSize(100000);
 
 		IPipeProcess pipe = PlatformUtils.INSTANCE.getPipeProcess("mencoder" + System.currentTimeMillis());
 		params.getInputPipes()[0] = pipe;
 
-		String[] cmdArray = new String[args().length + 4];
+		String[] defaultArgs = getDefaultArgs(configuration);
+		String[] cmdArray = new String[defaultArgs.length + 4];
 		cmdArray[0] = getExecutable();
 		final String filename = dlna.getFileName();
 		cmdArray[1] = filename;
-		System.arraycopy(args(), 0, cmdArray, 2, args().length);
+		System.arraycopy(defaultArgs, 0, cmdArray, 2, defaultArgs.length);
 		cmdArray[cmdArray.length - 2] = "-o";
 		cmdArray[cmdArray.length - 1] = pipe.getInputPipe();
 
@@ -123,7 +122,6 @@ public class MEncoderWebVideo extends MEncoderVideo {
 
 		// Not sure what good this 50ms wait will do for the calling method.
 		UMSUtils.sleep(50);
-		configuration = prev;
 		return pw;
 	}
 
@@ -135,11 +133,6 @@ public class MEncoderWebVideo extends MEncoderVideo {
 	@Override
 	public String getName() {
 		return NAME;
-	}
-
-	@Override
-	public String[] args() {
-		return getDefaultArgs();
 	}
 
 	@Override

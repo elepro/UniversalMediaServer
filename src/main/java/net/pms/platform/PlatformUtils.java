@@ -23,6 +23,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.URI;
@@ -31,7 +32,9 @@ import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import javax.annotation.concurrent.GuardedBy;
 import net.pms.Messages;
 import net.pms.PMS;
 import net.pms.io.IPipeProcess;
@@ -49,6 +52,7 @@ import net.pms.service.sleep.AbstractSleepWorker;
 import net.pms.service.sleep.PreventSleepMode;
 import net.pms.service.sleep.SleepManager;
 import net.pms.util.PropertiesUtil;
+import net.pms.util.StringUtil;
 import net.pms.util.Version;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -65,10 +69,15 @@ public class PlatformUtils implements IPlatformUtils {
 	/** *  The singleton platform dependent {@link IPlatformUtils} instance */
 	public static final IPlatformUtils INSTANCE = PlatformUtils.createInstance();
 	protected static final Object IS_ADMIN_LOCK = new Object();
-	protected static Boolean isAdmin = null;
+	protected static final Object DEFAULT_FOLDERS_LOCK = new Object();
 
 	// the OS version for macOS and Windows
 	protected static final Semver OS_VERSION = createOSVersion();
+
+	@GuardedBy("IS_ADMIN_LOCK")
+	protected static Boolean isAdmin = null;
+	@GuardedBy("DEFAULT_FOLDERS_LOCK")
+	protected static List<Path> defaultFolders = null;
 
 	protected Path vlcPath;
 	protected Version vlcVersion;
@@ -280,20 +289,26 @@ public class PlatformUtils implements IPlatformUtils {
 
 	@Override
 	public List<Path> getDefaultFolders() {
-		List<Path> result = new ArrayList<>();
-		result.add(Paths.get("").toAbsolutePath());
-		String userHome = System.getProperty("user.home");
-		if (StringUtils.isNotBlank(userHome)) {
-			result.add(Paths.get(userHome));
+		synchronized (DEFAULT_FOLDERS_LOCK) {
+			if (defaultFolders == null) {
+				// Lazy initialization
+				List<Path> result = new ArrayList<>();
+				result.add(Paths.get("").toAbsolutePath());
+				String userHome = System.getProperty("user.home");
+				if (StringUtils.isNotBlank(userHome)) {
+					result.add(Paths.get(userHome));
+				}
+				//TODO: (Nad) Implement xdg-user-dir for Linux when EnginesRegistration is merged:
+				// xdg-user-dir DESKTOP
+				// xdg-user-dir DOWNLOAD
+				// xdg-user-dir PUBLICSHARE
+				// xdg-user-dir MUSIC
+				// xdg-user-dir PICTURES
+				// xdg-user-dir VIDEOS
+				defaultFolders = Collections.unmodifiableList(result);
+			}
+			return defaultFolders;
 		}
-		//TODO: (Nad) Implement xdg-user-dir for Linux when EnginesRegistration is merged:
-		// xdg-user-dir DESKTOP
-		// xdg-user-dir DOWNLOAD
-		// xdg-user-dir PUBLICSHARE
-		// xdg-user-dir MUSIC
-		// xdg-user-dir PICTURES
-		// xdg-user-dir VIDEOS
-		return result;
 	}
 
 	@Override
@@ -339,6 +354,26 @@ public class PlatformUtils implements IPlatformUtils {
 	@Override
 	public void appendErrorString(StringBuilder sb, int exitCode) {
 		sb.append("Process exited with code ").append(exitCode).append(":\n");
+	}
+
+	@Override
+	public List<String> getRestartCommand(boolean hasOptions) {
+		return getUMSCommand();
+	}
+
+	@Override
+	public String getShutdownCommand() {
+		return null;
+	}
+
+	@Override
+	public String getJvmExecutableName() {
+		return "java";
+	}
+
+	@Override
+	public void destroyProcess(Process p) {
+		p.destroy();
 	}
 
 	private static PlatformUtils createInstance() {
@@ -426,4 +461,37 @@ public class PlatformUtils implements IPlatformUtils {
 	public static boolean isMac() {
 		return Platform.isMac();
 	}
+
+	// Reconstruct the command that started this jvm, including all options.
+	// See
+	// http://stackoverflow.com/questions/4159802/how-can-i-restart-a-java-application
+	// http://stackoverflow.com/questions/1518213/read-java-jvm-startup-parameters-eg-xmx
+	protected static List<String> getUMSCommand() {
+		List<String> restart = new ArrayList<>();
+		File jvmPath = new File(System.getProperty("java.home"));
+		String jvmExecutableName = INSTANCE.getJvmExecutableName();
+		File jvmExecutable = new File(jvmPath, jvmExecutableName);
+		if (!jvmExecutable.exists() || jvmExecutable.isDirectory()) {
+			jvmPath = new File(jvmPath, "bin");
+			jvmExecutable = new File(jvmPath, jvmExecutableName);
+		}
+		if (!jvmExecutable.exists() || jvmExecutable.isDirectory()) {
+			LOGGER.error("Can´t find Java executable \"{}\", falling back to pathless execution using \"{}\"",
+				jvmExecutable.getAbsolutePath(), jvmExecutableName);
+			restart.add(jvmExecutableName);
+		} else {
+			restart.add(StringUtil.quoteArg(jvmExecutable.getAbsolutePath()));
+		}
+		for (String jvmArg : ManagementFactory.getRuntimeMXBean().getInputArguments()) {
+			restart.add(StringUtil.quoteArg(jvmArg));
+		}
+		restart.add("-cp");
+		restart.add(ManagementFactory.getRuntimeMXBean().getClassPath());
+		// Could also use generic main discovery instead:
+		// see
+		// http://stackoverflow.com/questions/41894/0-program-name-in-java-discover-main-class
+		restart.add(PMS.class.getName());
+		return restart;
+	}
+
 }

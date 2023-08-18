@@ -20,7 +20,7 @@
 	<artifactId>ums</artifactId>
 	<name>Universal Media Server</name>
 	<packaging>jar</packaging>
-	<version>13.4.0-SNAPSHOT</version>
+	<version>13.6.0-SNAPSHOT</version>
 	<url>https://www.universalmediaserver.com/</url>
 	<inceptionYear>2012</inceptionYear>
 
@@ -53,7 +53,7 @@
 	</issueManagement>
 	<properties>
 		<!-- NSIS needs a version without "-SNAPSHOT" or "-b1" -->
-		<project.version.short>13.4.0</project.version.short>
+		<project.version.short>13.6.0</project.version.short>
 		<project.jre-version>17</project.jre-version>
 		<jgoodies-forms-version>1.9.0</jgoodies-forms-version>
 
@@ -69,13 +69,13 @@
 
 		<project.binaries-base>https://www.universalmediaserver.com/svn/binaries</project.binaries-base>
 
-		<binary-revision>165</binary-revision>
+		<binary-revision>176</binary-revision>
 
 		<exec-maven-plugin-version>3.1.0</exec-maven-plugin-version>
 		<maven-antrun-plugin-version>3.1.0</maven-antrun-plugin-version>
 		<maven-javadoc-plugin-version>3.4.1</maven-javadoc-plugin-version>
 		<git-commit-id-plugin-version>4.9.10</git-commit-id-plugin-version>
-		<maven-assembly-plugin-version>3.5.0</maven-assembly-plugin-version>
+		<maven-assembly-plugin-version>3.6.0</maven-assembly-plugin-version>
 		<maven-enforcer-plugin-version>3.3.0</maven-enforcer-plugin-version>
 
 		<!--
@@ -97,7 +97,7 @@
 			ch.qos.logback:logback-classic and logback-core is shared with
 				- net.pms:ums
 		-->
-		<logback-version>1.4.6</logback-version>
+		<logback-version>1.4.11</logback-version>
 
 		<!--
 			com.fasterxml.jackson.core:logback-classic and logback-core is shared with
@@ -105,9 +105,9 @@
 				- su.litvak.chromecast:api-v2
 				- fm.last:coverartarchive-api
 		-->
-		<jackson.version>2.14.2</jackson.version>
+		<jackson.version>2.15.2</jackson.version>
 
-		<surefire-version>3.0.0</surefire-version>
+		<surefire-version>3.1.2</surefire-version>
 
 		<!--
 			net.java.dev.jna:jna-platform is shared with
@@ -124,8 +124,7 @@
 			 system-makensis profile
 		 -->
 		<makensis-bin>${project.external-resources}/windows/nsis/makensis.exe</makensis-bin>
-		<junit5.version>5.9.2</junit5.version>
-		<com.sun.xml.bind-version>4.0.1</com.sun.xml.bind-version>
+		<junit5.version>5.10.0</junit5.version>
 		<maven.compiler.source>${project.jre-version}</maven.compiler.source>
 		<maven.compiler.target>${project.jre-version}</maven.compiler.target>
 	</properties>
@@ -226,12 +225,12 @@
 
 				Check the commons-io:commons-io version of the libraries before upgrading
 			-->
-			<version>2.11.0</version>
+			<version>2.13.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>
-			<version>3.12.0</version>
+			<version>3.13.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
@@ -299,7 +298,7 @@
 		<dependency>
 			<groupId>net.coobird</groupId>
 			<artifactId>thumbnailator</artifactId>
-			<version>0.4.19</version>
+			<version>0.4.20</version>
 		</dependency>
 
 		<!--
@@ -405,7 +404,7 @@
 			<groupId>com.github.junrar</groupId>
 			<artifactId>junrar</artifactId>
 			<!-- Check the org.slf4j:slf4j-api version of the other libraries before upgrading -->
-			<version>7.5.4</version>
+			<version>7.5.5</version>
 			<exclusions>
 				<exclusion>
 					<groupId>org.slf4j</groupId>
@@ -465,17 +464,12 @@
 		<dependency>
 			<groupId>org.jupnp</groupId>
 			<artifactId>org.jupnp</artifactId>
-			<version>2.7.0</version>
+			<version>2.7.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jupnp</groupId>
 			<artifactId>org.jupnp.support</artifactId>
-			<version>2.7.0</version>
-		</dependency>
-		<dependency>
-			<groupId>com.samskivert</groupId>
-			<artifactId>jmustache</artifactId>
-			<version>1.15</version>
+			<version>2.7.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
@@ -511,7 +505,7 @@
 		<dependency>
 			<groupId>com.ibm.icu</groupId>
 			<artifactId>icu4j</artifactId>
-			<version>73.1</version>
+			<version>73.2</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.code.findbugs</groupId>
@@ -573,7 +567,7 @@
 			<!-- Check the org.slf4j:slf4j-api version of the other libraries before upgrading -->
 			<!-- Check the net.java.dev.jna:jna version of the other libraries before upgrading -->
 			<!-- Check the net.java.dev.jna:jna-platform version of the other libraries before upgrading -->
-			<version>6.4.1</version>
+			<version>6.4.4</version>
 			<exclusions>
 				<exclusion>
 					<groupId>org.slf4j</groupId>
@@ -590,24 +584,40 @@
 			</exclusions>
 		</dependency>
 		<!-- start of JAXB dependencies -->
-		<!--
-			Those dependencies could be removed as soon as we drop support for Java 8,
-			and add "-add-modules java.xml.bind" as a app command line argument
-		-->
+		<dependency>
+			<groupId>org.eclipse.angus</groupId>
+			<artifactId>angus-activation</artifactId>
+			<version>2.0.1</version>
+		</dependency>
 		<dependency>
 			<groupId>com.sun.xml.messaging.saaj</groupId>
 			<artifactId>saaj-impl</artifactId>
-			<version>3.0.1</version>
-		</dependency>
-		<dependency>
-			<groupId>com.sun.xml.bind</groupId>
-			<artifactId>jaxb-core</artifactId>
-			<version>${com.sun.xml.bind-version}</version>
+			<version>3.0.2</version>
+			<exclusions>
+				<exclusion>
+					<groupId>jakarta.activation</groupId>
+					<artifactId>jakarta.activation-api</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.eclipse.angus</groupId>
+					<artifactId>angus-activation</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>com.sun.xml.bind</groupId>
 			<artifactId>jaxb-impl</artifactId>
-			<version>${com.sun.xml.bind-version}</version>
+			<version>4.0.3</version>
+			<exclusions>
+				<exclusion>
+					<groupId>jakarta.activation</groupId>
+					<artifactId>jakarta.activation-api</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.eclipse.angus</groupId>
+					<artifactId>angus-activation</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<!-- end of JAXB dependencies -->
 		<dependency>
@@ -733,22 +743,29 @@
 				<!-- Enable the use of Maven properties -->
 				<filtering>true</filtering>
 			</testResource>
-			<!--*.srt files to test charset detection and *json to test filename prettification-->
+			<!--*.srt files to test charset detection-->
+			<testResource>
+				<directory>src/test/resources/net/pms/media/subtitle</directory>
+				<includes>
+					<include>*.srt</include>
+				</includes>
+				<targetPath>net/pms/media/subtitle</targetPath>
+			</testResource>
+			<!--*json file to test filename prettification-->
 			<testResource>
 				<directory>src/test/resources/net/pms/util</directory>
 				<includes>
-					<include>*.srt</include>
 					<include>*.json</include>
 				</includes>
 				<targetPath>net/pms/util</targetPath>
 			</testResource>
 			<!--*media files to test transcoding and identification-->
 			<testResource>
-				<directory>src/test/resources/net/pms/dlna</directory>
+				<directory>src/test/resources/net/pms/parsers</directory>
 				<includes>
 					<include>*.*</include>
 				</includes>
-				<targetPath>net/pms/dlna</targetPath>
+				<targetPath>net/pms/parsers</targetPath>
 			</testResource>
 		</testResources>
 		<pluginManagement>
@@ -885,7 +902,7 @@
 					<plugin>
 						<groupId>com.github.eirslett</groupId>
 						<artifactId>frontend-maven-plugin</artifactId>
-						<version>1.12.1</version>
+						<version>1.13.4</version>
 						<configuration>
 							<installDirectory>react-client</installDirectory>
 							<workingDirectory>react-client</workingDirectory>
@@ -1265,7 +1282,7 @@
 					<plugin>
 						<groupId>com.github.eirslett</groupId>
 						<artifactId>frontend-maven-plugin</artifactId>
-						<version>1.12.1</version>
+						<version>1.13.4</version>
 						<configuration>
 							<installDirectory>react-client</installDirectory>
 							<workingDirectory>react-client</workingDirectory>
@@ -1412,7 +1429,7 @@
 					<plugin>
 						<groupId>com.github.eirslett</groupId>
 						<artifactId>frontend-maven-plugin</artifactId>
-						<version>1.12.1</version>
+						<version>1.13.4</version>
 						<configuration>
 							<installDirectory>react-client</installDirectory>
 							<workingDirectory>react-client</workingDirectory>
@@ -1559,7 +1576,7 @@
 					<plugin>
 						<groupId>com.github.eirslett</groupId>
 						<artifactId>frontend-maven-plugin</artifactId>
-						<version>1.12.1</version>
+						<version>1.13.4</version>
 						<configuration>
 							<installDirectory>react-client</installDirectory>
 							<workingDirectory>react-client</workingDirectory>
@@ -1706,7 +1723,7 @@
 					<plugin>
 						<groupId>com.github.eirslett</groupId>
 						<artifactId>frontend-maven-plugin</artifactId>
-						<version>1.12.1</version>
+						<version>1.13.4</version>
 						<configuration>
 							<installDirectory>react-client</installDirectory>
 							<workingDirectory>react-client</workingDirectory>
@@ -1861,7 +1878,7 @@
 					<plugin>
 						<groupId>com.github.eirslett</groupId>
 						<artifactId>frontend-maven-plugin</artifactId>
-						<version>1.12.1</version>
+						<version>1.13.4</version>
 						<configuration>
 							<installDirectory>react-client</installDirectory>
 							<workingDirectory>react-client</workingDirectory>
@@ -2016,7 +2033,7 @@
 					<plugin>
 						<groupId>com.github.eirslett</groupId>
 						<artifactId>frontend-maven-plugin</artifactId>
-						<version>1.12.1</version>
+						<version>1.13.4</version>
 						<configuration>
 							<installDirectory>react-client</installDirectory>
 							<workingDirectory>react-client</workingDirectory>
@@ -2258,7 +2275,7 @@
 					<plugin>
 						<groupId>com.github.eirslett</groupId>
 						<artifactId>frontend-maven-plugin</artifactId>
-						<version>1.12.1</version>
+						<version>1.13.4</version>
 						<configuration>
 							<installDirectory>react-client</installDirectory>
 							<workingDirectory>react-client</workingDirectory>
@@ -2502,7 +2519,7 @@
 					<plugin>
 						<groupId>com.github.eirslett</groupId>
 						<artifactId>frontend-maven-plugin</artifactId>
-						<version>1.12.1</version>
+						<version>1.13.4</version>
 						<configuration>
 							<installDirectory>react-client</installDirectory>
 							<workingDirectory>react-client</workingDirectory>
@@ -2935,7 +2952,7 @@
 					<plugin>
 						<groupId>com.github.eirslett</groupId>
 						<artifactId>frontend-maven-plugin</artifactId>
-						<version>1.12.1</version>
+						<version>1.13.4</version>
 						<configuration>
 							<installDirectory>react-client</installDirectory>
 							<workingDirectory>react-client</workingDirectory>
@@ -3081,7 +3098,7 @@
 					<plugin>
 						<groupId>com.github.eirslett</groupId>
 						<artifactId>frontend-maven-plugin</artifactId>
-						<version>1.12.1</version>
+						<version>1.13.4</version>
 						<configuration>
 							<installDirectory>react-client</installDirectory>
 							<workingDirectory>react-client</workingDirectory>
@@ -3227,7 +3244,7 @@
 					<plugin>
 						<groupId>com.github.eirslett</groupId>
 						<artifactId>frontend-maven-plugin</artifactId>
-						<version>1.12.1</version>
+						<version>1.13.4</version>
 						<configuration>
 							<installDirectory>react-client</installDirectory>
 							<workingDirectory>react-client</workingDirectory>
@@ -3496,7 +3513,7 @@
 					<plugin>
 						<groupId>com.github.eirslett</groupId>
 						<artifactId>frontend-maven-plugin</artifactId>
-						<version>1.12.1</version>
+						<version>1.13.4</version>
 						<configuration>
 							<installDirectory>react-client</installDirectory>
 							<workingDirectory>react-client</workingDirectory>
@@ -3558,6 +3575,7 @@
 									<target unless="offline">
 										<mkdir dir="${project.binaries}/bin" />
 										<get src="${project.binaries-base}/win32/MediaInfo64.dll?p=${binary-revision}" dest="${project.binaries}/bin/MediaInfo.dll" usetimestamp="true" />
+										<get src="${project.binaries-base}/win32/ffmpeg64.exe?p=${binary-revision}" dest="${project.binaries}/bin/ffmpeg.exe" usetimestamp="true" />
 									</target>
 								</configuration>
 							</execution>
@@ -3567,12 +3585,12 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-checkstyle-plugin</artifactId>
-						<version>3.2.1</version>
+						<version>3.3.0</version>
 						<dependencies>
 							<dependency>
 								<groupId>com.puppycrawl.tools</groupId>
 								<artifactId>checkstyle</artifactId>
-								<version>10.9.3</version>
+								<version>10.12.2</version>
 							</dependency>
 						</dependencies>
 						<configuration>

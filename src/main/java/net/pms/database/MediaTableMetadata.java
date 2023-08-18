@@ -20,23 +20,32 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import org.h2.jdbc.JdbcSQLIntegrityConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class MediaTableMetadata extends MediaTable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(MediaTableMetadata.class);
 	public static final String TABLE_NAME = "METADATA";
-	private static final String COL_M_KEY = "M_KEY";
-	private static final String COL_M_VALUE = "M_VALUE";
-	private static final String SQL_GET_ALL = "SELECT * FROM " + TABLE_NAME + " WHERE " + COL_M_KEY + " = ? LIMIT 1";
-	private static final String SQL_GET_M_VALUE = "SELECT " + COL_M_VALUE + " FROM " + TABLE_NAME + " WHERE " + COL_M_KEY + " = ? LIMIT 1";
 
 	/**
 	 * Table version must be increased every time a change is done to the table
 	 * definition. Table upgrade SQL must also be added to
 	 * {@link #upgradeTable(Connection, int)}
 	 */
-	private static final int TABLE_VERSION = 2;
+	private static final int TABLE_VERSION = 3;
+
+	/**
+	 * COLUMNS NAMES
+	 */
+	private static final String COL_M_KEY = "M_KEY";
+	private static final String COL_M_VALUE = "M_VALUE";
+
+	/**
+	 * SQL Queries
+	 */
+	private static final String SQL_GET_ALL = SELECT_ALL + FROM + TABLE_NAME + WHERE + COL_M_KEY + EQUAL + PARAMETER + LIMIT_1;
+	private static final String SQL_GET_M_VALUE = SELECT + COL_M_VALUE + FROM + TABLE_NAME + WHERE + COL_M_KEY + EQUAL + PARAMETER + LIMIT_1;
 
 	/**
 	 * Checks and creates or upgrades the table as needed.
@@ -49,7 +58,6 @@ public class MediaTableMetadata extends MediaTable {
 		if (tableExists(connection, TABLE_NAME)) {
 			Integer version = MediaTableTablesVersions.getTableVersion(connection, TABLE_NAME);
 			if (version == null) {
-				// Moving sql from DLNAMediaDatabase to this class.
 				version = 1;
 			}
 			if (version < TABLE_VERSION) {
@@ -69,17 +77,19 @@ public class MediaTableMetadata extends MediaTable {
 			for (int version = currentVersion; version < TABLE_VERSION; version++) {
 				LOGGER.trace(LOG_UPGRADING_TABLE, DATABASE_NAME, TABLE_NAME, version, version + 1);
 				switch (version) {
-					case 1:
+					case 1 -> {
 						// From version 1 to 2, we stopped using KEY and VALUE, and instead use M_KEY and M_VALUE
 						executeUpdate(connection, "DROP INDEX IF EXISTS IDX_KEY");
-						executeUpdate(connection, "ALTER TABLE " + TABLE_NAME + " ALTER COLUMN `KEY` RENAME TO M_KEY");
-						executeUpdate(connection, "ALTER TABLE " + TABLE_NAME + " ALTER COLUMN `VALUE` RENAME TO M_VALUE");
-						executeUpdate(connection, "CREATE UNIQUE INDEX IDX_M_KEY ON " + TABLE_NAME + "(M_KEY)");
-						break;
-					default:
-						throw new IllegalStateException(
-							getMessage(LOG_UPGRADING_TABLE_MISSING, DATABASE_NAME, TABLE_NAME, version, TABLE_VERSION)
-						);
+						executeUpdate(connection, ALTER_TABLE + TABLE_NAME + ALTER_COLUMN + IF_EXISTS + "`KEY`" + RENAME_TO + COL_M_KEY);
+						executeUpdate(connection, ALTER_TABLE + TABLE_NAME + ALTER_COLUMN + IF_EXISTS + "`VALUE`" + RENAME_TO + COL_M_VALUE);
+						executeUpdate(connection, CREATE_UNIQUE_INDEX + IF_NOT_EXISTS + TABLE_NAME + CONSTRAINT_SEPARATOR + COL_M_KEY + IDX_MARKER + ON + TABLE_NAME + "(" + COL_M_KEY + ")");
+					}
+					case 2 -> {
+						executeUpdate(connection, ALTER_INDEX + IF_EXISTS + "IDX_" + COL_M_KEY + RENAME_TO + TABLE_NAME + CONSTRAINT_SEPARATOR + COL_M_KEY + IDX_MARKER);
+					}
+					default -> throw new IllegalStateException(
+						getMessage(LOG_UPGRADING_TABLE_MISSING, DATABASE_NAME, TABLE_NAME, version, TABLE_VERSION)
+					);
 				}
 			}
 			try {
@@ -95,13 +105,13 @@ public class MediaTableMetadata extends MediaTable {
 	}
 
 	private static void createTable(final Connection connection) throws SQLException {
-		LOGGER.debug(LOG_CREATING_TABLE, DATABASE_NAME, TABLE_NAME);
+		LOGGER.info(LOG_CREATING_TABLE, DATABASE_NAME, TABLE_NAME);
 		execute(connection,
-			"CREATE TABLE " + TABLE_NAME + " (" +
-				"M_KEY       VARCHAR(255)       NOT NULL , " +
-				"M_VALUE     VARCHAR(255)       NOT NULL   " +
+			CREATE_TABLE + TABLE_NAME + " (" +
+				COL_M_KEY       + VARCHAR_SIZE_MAX      + NOT_NULL  + COMMA +
+				COL_M_VALUE     + VARCHAR_SIZE_MAX      + NOT_NULL  +
 			")",
-			"CREATE UNIQUE INDEX IDX_M_KEY ON " + TABLE_NAME + "(M_KEY)"
+			CREATE_UNIQUE_INDEX + TABLE_NAME + CONSTRAINT_SEPARATOR + COL_M_KEY + IDX_MARKER + ON + TABLE_NAME + "(" + COL_M_KEY + ")"
 		);
 	}
 
@@ -136,34 +146,57 @@ public class MediaTableMetadata extends MediaTable {
 	public static void setOrUpdateMetadataValue(final Connection connection, final String key, final String value) {
 		boolean trace = LOGGER.isTraceEnabled();
 
-		try {
-			try (PreparedStatement statement = connection.prepareStatement(SQL_GET_ALL, ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
-				statement.setString(1, key);
-				if (trace) {
-					LOGGER.trace("Searching for value in METADATA with \"{}\" before update", statement);
-				}
-
-				try (ResultSet result = statement.executeQuery()) {
-					boolean isCreatingNewRecord = false;
-
-					if (!result.next()) {
-						isCreatingNewRecord = true;
-						result.moveToInsertRow();
-					}
-
-					result.updateString(COL_M_KEY, key);
-					result.updateString(COL_M_VALUE, value);
-
-					if (isCreatingNewRecord) {
-						result.insertRow();
-					} else {
-						result.updateRow();
-					}
-				}
+		try (PreparedStatement statement = connection.prepareStatement(SQL_GET_ALL, ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
+			statement.setString(1, key);
+			if (trace) {
+				LOGGER.trace("Searching for value in METADATA with \"{}\" before update", statement);
 			}
-		} catch (SQLException se) {
-			LOGGER.error(LOG_ERROR_WHILE_VAR_IN, DATABASE_NAME, "writing value", key, TABLE_NAME, se.getMessage());
-			LOGGER.trace("", se);
+
+			try (ResultSet result = statement.executeQuery()) {
+				boolean isCreatingNewRecord = !result.next();
+
+				if (isCreatingNewRecord) {
+					result.moveToInsertRow();
+				}
+
+				result.updateString(COL_M_KEY, key);
+				result.updateString(COL_M_VALUE, value);
+
+				if (isCreatingNewRecord) {
+					result.insertRow();
+				} else {
+					result.updateRow();
+				}
+			} catch (JdbcSQLIntegrityConstraintViolationException e) {
+				/**
+				 * Allow the database to recover from a unique index violation.
+				 * Not sure how the database has allowed itself to get into that
+				 * in the first place but that seems out of our control - my
+				 * assumption being that h2database should not allow a unique index
+				 * to be applied to non-unique data.
+				 *
+				 * @see https://github.com/UniversalMediaServer/UniversalMediaServer/issues/3901
+				 */
+				LOGGER.debug("Attempting to recover from error: {}", e.getMessage());
+				LOGGER.trace("", e);
+
+				executeUpdate(connection, "DROP INDEX IF EXISTS IDX_M_KEY");
+				String query = DELETE_FROM + TABLE_NAME + WHERE + COL_M_KEY + EQUAL + sqlQuote(key);
+				try {
+					execute(connection, query);
+					LOGGER.debug("Recovery seems successful, recreating unique index");
+				} catch (SQLException se) {
+					LOGGER.error(LOG_ERROR_WHILE_VAR_IN, DATABASE_NAME, "deleting value", key, TABLE_NAME, se.getMessage());
+					LOGGER.trace("", se);
+				}
+				executeUpdate(connection, CREATE_UNIQUE_INDEX + TABLE_NAME + CONSTRAINT_SEPARATOR + COL_M_KEY + IDX_MARKER + ON + TABLE_NAME + "(" + COL_M_KEY + ")");
+			} catch (Exception e) {
+				LOGGER.error("Error while writing metadata: {}", e.getMessage());
+				LOGGER.trace("", e);
+			}
+		} catch (Exception e2) {
+			LOGGER.error(LOG_ERROR_WHILE_VAR_FOR_IN, DATABASE_NAME, "writing value", key, value, TABLE_NAME, e2.getMessage());
+			LOGGER.trace("", e2);
 		}
 	}
 }

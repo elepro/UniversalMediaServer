@@ -24,6 +24,7 @@ import java.util.List;
 import net.pms.encoders.Engine;
 import net.pms.encoders.EngineFactory;
 import net.pms.formats.Format;
+import net.pms.media.MediaInfo;
 import org.apache.commons.lang3.StringUtils;
 import org.digitalmediaserver.cuelib.CueParser;
 import org.digitalmediaserver.cuelib.CueSheet;
@@ -96,7 +97,7 @@ public class CueFolder extends DLNAResource {
 					FileData f = files.get(0);
 					List<TrackData> tracks = f.getTrackData();
 					Engine defaultPlayer = null;
-					DLNAMediaInfo originalMedia = null;
+					MediaInfo originalMedia = null;
 					ArrayList<DLNAResource> addedResources = new ArrayList<>();
 					for (int i = 0; i < tracks.size(); i++) {
 						TrackData track = tracks.get(i);
@@ -122,16 +123,16 @@ public class CueFolder extends DLNAResource {
 						addedResources.add(realFile);
 
 						if (i > 0 && realFile.getMedia() == null) {
-							realFile.setMedia(new DLNAMediaInfo());
-							realFile.getMedia().setMediaparsed(true);
+							realFile.setMedia(new MediaInfo());
+							realFile.getMedia().setMediaParser("CueLib");
 						}
 						realFile.syncResolve();
 						if (i == 0) {
 							originalMedia = realFile.getMedia();
-							if (originalMedia == null) {
-								LOGGER.trace("Couldn't resolve media \"{}\" for cue file \"{}\" - aborting", realFile.getName(), playlistfile.getAbsolutePath());
-								return;
-							}
+						}
+						if (originalMedia == null) {
+							LOGGER.trace("Couldn't resolve media \"{}\" for cue file \"{}\" - aborting", realFile.getName(), playlistfile.getAbsolutePath());
+							return;
 						}
 						realFile.getSplitRange().setStart(getTime(start));
 						realFile.setSplitTrack(i + 1);
@@ -152,22 +153,22 @@ public class CueFolder extends DLNAResource {
 								LOGGER.info("Error in cloning media info: " + e.getMessage());
 							}
 
-							if (realFile.getMedia() != null && realFile.getMedia().getFirstAudioTrack() != null) {
+							if (realFile.getMedia() != null && realFile.getMedia().hasAudioMetadata()) {
 								if (realFile.getFormat().isAudio()) {
-									realFile.getMedia().getFirstAudioTrack().setSongname(track.getTitle());
+									realFile.getMedia().getAudioMetadata().setSongname(track.getTitle());
 								} else {
-									realFile.getMedia().getFirstAudioTrack().setSongname("Chapter #" + (i + 1));
+									realFile.getMedia().getDefaultAudioTrack().setTitle("Chapter #" + (i + 1));
 								}
-								realFile.getMedia().getFirstAudioTrack().setTrack(i + 1);
+								realFile.getMedia().getAudioMetadata().setTrack(i + 1);
 								realFile.getMedia().setSize(-1);
 								if (StringUtils.isNotBlank(sheet.getTitle())) {
-									realFile.getMedia().getFirstAudioTrack().setAlbum(sheet.getTitle());
+									realFile.getMedia().getAudioMetadata().setAlbum(sheet.getTitle());
 								}
 								if (StringUtils.isNotBlank(sheet.getPerformer())) {
-									realFile.getMedia().getFirstAudioTrack().setArtist(sheet.getPerformer());
+									realFile.getMedia().getAudioMetadata().setArtist(sheet.getPerformer());
 								}
 								if (StringUtils.isNotBlank(track.getPerformer())) {
-									realFile.getMedia().getFirstAudioTrack().setArtist(track.getPerformer());
+									realFile.getMedia().getAudioMetadata().setArtist(track.getPerformer());
 								}
 							}
 
@@ -178,7 +179,7 @@ public class CueFolder extends DLNAResource {
 					if (!tracks.isEmpty() && !addedResources.isEmpty()) {
 						DLNAResource lastTrack = addedResources.get(addedResources.size() - 1);
 						TimeRange lastTrackSplitRange = lastTrack.getSplitRange();
-						DLNAMediaInfo lastTrackMedia = lastTrack.getMedia();
+						MediaInfo lastTrackMedia = lastTrack.getMedia();
 
 						if (lastTrackSplitRange != null && lastTrackMedia != null) {
 							lastTrackSplitRange.setEnd(lastTrackMedia.getDurationInSeconds());
@@ -193,7 +194,8 @@ public class CueFolder extends DLNAResource {
 		}
 	}
 
-	private double getTime(Position p) {
+	private static double getTime(Position p) {
 		return p.getMinutes() * 60 + p.getSeconds() + ((double) p.getFrames() / 100);
 	}
+
 }

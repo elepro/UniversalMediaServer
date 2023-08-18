@@ -17,14 +17,16 @@
 package net.pms.dlna;
 
 import com.github.junrar.Archive;
-import com.github.junrar.volume.FileVolumeManager;
 import com.github.junrar.exception.RarException;
 import com.github.junrar.rarfile.FileHeader;
+import com.github.junrar.volume.FileVolumeManager;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import net.pms.formats.Format;
+import net.pms.media.MediaInfo;
+import net.pms.parsers.Parser;
 import net.pms.util.FileUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,7 +67,7 @@ public class RarredEntry extends DLNAResource implements IPushOutput {
 	@Override
 	public long length() {
 		if (getEngine() != null && getEngine().type() != Format.IMAGE) {
-			return DLNAMediaInfo.TRANS_SIZE;
+			return MediaInfo.TRANS_SIZE;
 		}
 
 		return length;
@@ -132,24 +134,17 @@ public class RarredEntry extends DLNAResource implements IPushOutput {
 			return;
 		}
 
-		// TODO: found seems not used here
-		boolean found = false;
+		if (getMedia() == null) {
+			setMedia(new MediaInfo());
+		}
 
-		if (!found) {
-			if (getMedia() == null) {
-				setMedia(new DLNAMediaInfo());
-			}
-
-			found = !getMedia().isMediaparsed() && !getMedia().isParsing();
-
-			if (getFormat() != null) {
-				InputFile input = new InputFile();
-				input.setPush(this);
-				input.setSize(length());
-				getFormat().parse(getMedia(), input, getType(), null);
-				if (getMedia() != null && getMedia().isSLS()) {
-					setFormat(getMedia().getAudioVariantFormat());
-				}
+		if (getFormat() != null) {
+			InputFile input = new InputFile();
+			input.setPush(this);
+			input.setSize(length());
+			Parser.parse(getMedia(), input, getFormat(), getType());
+			if (getMedia() != null && getMedia().isSLS()) {
+				setFormat(getMedia().getAudioVariantFormat());
 			}
 		}
 	}

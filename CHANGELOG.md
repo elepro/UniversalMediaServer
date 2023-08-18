@@ -1,5 +1,154 @@
 # Changelog
 
+## [13.6.0](https://github.com/UniversalMediaServer/UniversalMediaServer/compare/13.5.0...13.6.0) (2023-07-29)
+
+### General
+- Added support for automatic muxing of HDR streams for better video quality (e.g. Dolby Vision in MKV on LG TVs)
+- Improved parsing of SDTV filenames
+- Improved FFmpeg engine performance
+- Improved support for video playback on Safari
+- Fixed H.265 muxing via tsMuxeR
+- Fixed support for latest MediaInfo versions
+- Fixed recognition of renderers by UUID
+- Fixed name of playing file not showing up on old status tab
+- Fixed security vulnerabilities
+- Fixed thumbnail generation bugs (thanks, Chris Kroells!)
+- Fixed deferring to tsMuxeR when FFmpeg can mux the video
+- Fixed frozen media browsing
+- Fixed RTL language support in web settings
+- Added logging of subtitles default and forced details
+
+### Renderers
+- Added support for Dolby Vision in MKV on LG TVs
+- Fixed detection of VLC for macOS
+- Fixed native Opus audio support on LG TVs
+- Fixed native AVI/XviD support on Fetch TV, LG TVs, Panasonic DMR, and Sony TVs
+
+### Translation updates via Crowdin
+- Removed inconsistent trailing dot (thanks, Paul Furlet!)
+- Afrikaans (13%) (thanks, HencoSmit!)
+- Bulgarian (49%) (thanks, Dremski!)
+- Catalan (57%) (thanks, Antoni Grau i Quellos!)
+- Czech (82%)
+- Danish (64%) (thanks, GurliGebis!)
+- Finnish (64%) (thanks, Esko Gardner!)
+- Korean (63%) (thanks, VenusGirl!)
+- Polish (62%) (thanks, Karol Szastok!)
+- Portuguese, Brazilian (66%) (thanks, Mauro.A and Vyctor Oliveira!)
+- Russian (77%) (thanks, Олег Лойко!)
+- Turkish (87%) (thanks, Burak Yavuz!)
+- Ukrainian (20%) (thanks, Paul Furlet!)
+
+### Dependencies
+- lock file maintenance
+- Bump FFmpeg and tsMuxeR to latest
+- Bump MediaInfo to 23.06
+- Bump semver from 6.3.0 to 6.3.1
+- update dependency @testing-library/jest-dom to v5.17.0
+- update dependency @types/jest to v29.5.3
+- update dependency @types/lodash to v4.14.196
+- update dependency @types/node to v18.17.1
+- update dependency @types/react to v18.2.17
+- update dependency com.github.eirslett:frontend-maven-plugin to v1.13.4
+- update dependency com.github.junrar:junrar to v7.5.5
+- update dependency com.github.oshi:oshi-core to v6.4.4
+- update dependency eslint to v8.46.0
+- update dependency eslint-plugin-react to v7.33.0
+- update dependency org.apache.commons:commons-lang3 to v3.13.0
+- update dependency org.jupnp:org.jupnp to v2.7.1
+- update dependency react-router-dom to v6.14.2
+- update dependency web-vitals to v3.4.0
+- update junit5 monorepo to v5.10.0
+- update mantine monorepo packages to v6.0.17
+- update react monorepo
+- update typescript-eslint monorepo to v6.2.0
+- update dependency video.js to v8.5.1
+- update yarn to v3.6.1
+
+## [13.5.0](https://github.com/UniversalMediaServer/UniversalMediaServer/compare/13.4.1...13.5.0) (2023-07-04)
+
+### General
+- Added support for default and forced flags on subtitles on web player
+- Improve handling of web interface when server is offline
+- Fixed metadata not displaying when Media Library folder is disabled
+- Fixed subtitles without titles not working on web player
+- Formatting (thanks, RichardIcecube!)
+- Logging improvements
+
+### Renderers
+- Fix H.265 support on Freebox (thanks, ouaklafoud!)
+
+### Dependencies
+- lock file maintenance
+- update dependency @emotion/react to v11.11.1
+- update dependency @types/node to v18.16.18
+- update dependency @types/react to v18.2.14
+- update dependency com.ibm.icu:icu4j to v73.2
+- update dependency com.puppycrawl.tools:checkstyle to v10.12.1
+- update dependency com.sun.xml.bind-version to v4.0.3
+- update dependency commons-io:commons-io to v2.13.0
+- update dependency eslint to v8.43.0
+- update dependency frontend-maven-plugin to 1.13.3
+- update dependency hls.js to v1.4.6
+- update dependency mantine to v6.0.15
+- update dependency net.coobird:thumbnailator to v0.4.20
+- update dependency react-router-dom to v6.14.1
+- update dependency stylis to v4.3.0
+- update dependency typescript to v5.1.6
+- update logback-version to v1.4.8
+- update typescript-eslint monorepo to v5.60.1
+- update video.js to 8.5.0
+- update videojs-contrib-quality-levels to 4.0.0
+- update yarn to v3.6.0
+
+## [13.4.1](https://github.com/UniversalMediaServer/UniversalMediaServer/compare/13.4.0...13.4.1) (2023-06-07)
+
+### General
+
+- Fixed broken SystemUpdateId update
+- Fixed broken filename parsing with some HDR files
+- Fixed web player video playback bugs
+- Fixed security vulnerabilities
+- Fixed muxing Dolby Vision with tsMuxeR
+- Updated Javadocs (thanks, RichardIcecube!)
+
+### Translation updates via Crowdin
+- Bulgarian (47%) (thanks, STOYAN STOYANOV!)
+- Catalan (57%) (thanks, Antoni Grau i Quellos!)
+- Danish (64%) (thanks, GurliGebis!)
+- Japanese (59%) (thanks, was0914!)
+- Swedish (51%) (thanks, Erik Karlsson!)
+
+### Dependencies
+- lock file maintenance
+- update dependency @emotion/react to v11.11.0 
+- update dependency @types/jest to v29.5.2
+- update dependency @types/lodash to v4.14.195
+- update dependency @types/node to v18.16.16
+- update dependency @types/react to v18.2.8
+- update dependency @types/react-dom to v18.2.4
+- update dependency @types/video.js to v7.3.52
+- update dependency axios to v1.4.0
+- update dependency com.fasterxml.jackson.core:jackson-databind to v2.15.2
+- update dependency com.github.oshi:oshi-core to v6.4.3
+- update dependency com.puppycrawl.tools:checkstyle to v10.12.0
+- update dependency commons-io:commons-io to v2.12.0
+- update dependency eslint to v8.42.0
+- update dependency hls.js to v1.4.5
+- update dependency org.apache.maven.plugins:maven-assembly-plugin to v3.6.0 
+- update dependency org.apache.maven.plugins:maven-checkstyle-plugin to v3.3.0
+- update dependency org.apache.maven.plugins:maven-surefire-plugin to v3.1.2
+- update dependency react-router-dom to v6.11.2
+- update dependency stylis to v4.2.0
+- update dependency web-vitals to v3.3.2
+- Update JRE to 17.0.7+7
+- update junit5 monorepo to v5.9.3
+- update logback-version to v1.4.7
+- update react monorepo to v18.2.0
+- Update tsMuxeR to 2023-04-13-02-05-26
+- update typescript-eslint monorepo to v5.59.9
+- update yarn to v3.5.1
+
 ## [13.4.0](https://github.com/UniversalMediaServer/UniversalMediaServer/compare/13.3.0...13.4.0) (2023-04-19)
 
 ### General:

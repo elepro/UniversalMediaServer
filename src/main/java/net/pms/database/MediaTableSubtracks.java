@@ -23,9 +23,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import net.pms.dlna.DLNAMediaInfo;
-import net.pms.dlna.DLNAMediaSubtitle;
 import net.pms.formats.v2.SubtitleType;
+import net.pms.media.MediaInfo;
+import net.pms.media.subtitle.MediaSubtitle;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,21 +39,43 @@ import org.slf4j.LoggerFactory;
 public class MediaTableSubtracks extends MediaTable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(MediaTableSubtracks.class);
 	public static final String TABLE_NAME = "SUBTRACKS";
-	public static final String COL_FILEID = "FILEID";
-	public static final String TABLE_COL_FILEID = TABLE_NAME + "." + COL_FILEID;
-
-	private static final String SQL_GET_ALL_FILEID = "SELECT * FROM " + TABLE_NAME + " WHERE " + TABLE_COL_FILEID + " = ?";
-	private static final String SQL_DELETE_EXTERNALFILE = "DELETE FROM " + TABLE_NAME + " WHERE EXTERNALFILE = ?";
-
-	private static final int SIZE_LANG = 3;
-	private static final int SIZE_EXTERNALFILE = 1000;
 
 	/**
 	 * Table version must be increased every time a change is done to the table
 	 * definition. Table upgrade SQL must also be added to
 	 * {@link #upgradeTable(Connection, int)}
 	 */
-	private static final int TABLE_VERSION = 3;
+	private static final int TABLE_VERSION = 5;
+
+	/**
+	 * COLUMNS
+	 */
+	private static final String COL_ID = "ID";
+	public static final String COL_FILEID = "FILEID";
+	private static final String COL_LANG = "LANG";
+	private static final String COL_STREAMID = "STREAMID";
+	private static final String COL_DEFAULT_FLAG = "DEFAULT_FLAG";
+	private static final String COL_FORCED_FLAG = "FORCED_FLAG";
+	private static final String COL_OPTIONALID = "OPTIONALID";
+	private static final String COL_TITLE = "TITLE";
+	private static final String COL_FORMAT_TYPE = "FORMAT_TYPE";
+	private static final String COL_EXTERNALFILE = "EXTERNALFILE";
+	private static final String COL_CHARSET = "CHARSET";
+
+	/**
+	 * COLUMNS with table name
+	 */
+	private static final String TABLE_COL_ID = TABLE_NAME + "." + COL_ID;
+	private static final String TABLE_COL_FILEID = TABLE_NAME + "." + COL_FILEID;
+	private static final String TABLE_COL_EXTERNALFILE = TABLE_NAME + "." + COL_EXTERNALFILE;
+
+	/**
+	 * SQL Queries
+	 */
+	private static final String SQL_GET_ALL_FILEID = SELECT_ALL + FROM + TABLE_NAME + WHERE + TABLE_COL_FILEID + EQUAL + PARAMETER;
+	private static final String SQL_GET_ALL_FILEID_ID_EXTERNALFILE = SELECT_ALL + FROM + TABLE_NAME + WHERE + TABLE_COL_FILEID + EQUAL + PARAMETER + AND + TABLE_COL_ID + EQUAL + PARAMETER + AND + TABLE_COL_EXTERNALFILE + EQUAL + PARAMETER;
+	private static final String SQL_DELETE_EXTERNALFILE = DELETE_FROM + TABLE_NAME + WHERE + TABLE_COL_EXTERNALFILE + EQUAL + PARAMETER;
+	private static final String SQL_DELETE_BY_FILEID_ID_GREATER_OR_EQUAL = DELETE_FROM + TABLE_NAME + WHERE + TABLE_COL_FILEID + EQUAL + PARAMETER + AND + TABLE_COL_ID + GREATER_OR_EQUAL_THAN + PARAMETER;
 
 	/**
 	 * Checks and creates or upgrades the table as needed.
@@ -87,15 +109,23 @@ public class MediaTableSubtracks extends MediaTable {
 				case 1 -> {
 					if (isColumnExist(connection, TABLE_NAME, "TYPE")) {
 						LOGGER.trace("Renaming column name TYPE to FORMAT_TYPE");
-						executeUpdate(connection, "ALTER TABLE " + TABLE_NAME + " ALTER COLUMN `TYPE` RENAME TO FORMAT_TYPE");
+						executeUpdate(connection, ALTER_TABLE + TABLE_NAME + ALTER_COLUMN + "`TYPE`" + RENAME_TO + COL_FORMAT_TYPE);
 					}
 				}
 				case 2 -> {
 					try {
-						executeUpdate(connection, "ALTER TABLE " + TABLE_NAME + " RENAME CONSTRAINT PKSUB TO " + TABLE_NAME + "_PK");
+						executeUpdate(connection, ALTER_TABLE + TABLE_NAME + RENAME + CONSTRAINT + "PKSUB TO " + TABLE_NAME + PK_MARKER);
 					} catch (SQLException e) {
 						//PKSUB not found, nothing to update.
 					}
+				}
+				case 3 -> {
+					executeUpdate(connection, ALTER_TABLE + TABLE_NAME + ADD + COLUMN + IF_NOT_EXISTS + COL_DEFAULT_FLAG + BOOLEAN);
+					executeUpdate(connection, ALTER_TABLE + TABLE_NAME + ADD + COLUMN + IF_NOT_EXISTS + COL_FORCED_FLAG + BOOLEAN);
+				}
+				case 4 -> {
+					executeUpdate(connection, ALTER_TABLE + TABLE_NAME + ADD + COLUMN + IF_NOT_EXISTS + COL_STREAMID + INTEGER);
+					executeUpdate(connection, ALTER_TABLE + TABLE_NAME + ADD + COLUMN + IF_NOT_EXISTS + COL_OPTIONALID + BIGINT);
 				}
 				default -> {
 					throw new IllegalStateException(
@@ -114,86 +144,89 @@ public class MediaTableSubtracks extends MediaTable {
 	}
 
 	private static void createTable(final Connection connection) throws SQLException {
-		LOGGER.debug(LOG_CREATING_TABLE, DATABASE_NAME, TABLE_NAME);
+		LOGGER.info(LOG_CREATING_TABLE, DATABASE_NAME, TABLE_NAME);
 		execute(connection,
-			"CREATE TABLE " + TABLE_NAME + " (" +
-				"ID             INTEGER                             NOT NULL            , " +
-				"FILEID         BIGINT                              NOT NULL            , " +
-				"LANG           VARCHAR(" + SIZE_LANG + ")                              , " +
-				"TITLE          VARCHAR(" + SIZE_MAX + ")                               , " +
-				"FORMAT_TYPE    INTEGER                                                 , " +
-				"EXTERNALFILE   VARCHAR(" + SIZE_EXTERNALFILE + ")  NOT NULL default '' , " +
-				"CHARSET        VARCHAR(" + SIZE_MAX + ")                               , " +
-				"CONSTRAINT " + TABLE_NAME + "_PK PRIMARY KEY (FILEID, ID, EXTERNALFILE), " +
-				"CONSTRAINT " + TABLE_NAME + "_" + COL_FILEID + "_FK FOREIGN KEY(" + COL_FILEID + ") REFERENCES " + MediaTableFiles.REFERENCE_TABLE_COL_ID + " ON DELETE CASCADE" +
+			CREATE_TABLE + TABLE_NAME + " (" +
+				COL_ID               + INTEGER               + NOT_NULL                      + COMMA +
+				COL_FILEID           + BIGINT                + NOT_NULL                      + COMMA +
+				COL_LANG             + VARCHAR_SIZE_LANG                                     + COMMA +
+				COL_STREAMID         + INTEGER                                               + COMMA +
+				COL_OPTIONALID       + BIGINT                                                + COMMA +
+				COL_DEFAULT_FLAG     + BOOLEAN                                               + COMMA +
+				COL_FORCED_FLAG      + BOOLEAN                                               + COMMA +
+				COL_TITLE            + VARCHAR_SIZE_MAX                                      + COMMA +
+				COL_FORMAT_TYPE      + INTEGER                                               + COMMA +
+				COL_EXTERNALFILE     + VARCHAR_1000          + NOT_NULL + DEFAULT + "''"     + COMMA +
+				COL_CHARSET          + VARCHAR_SIZE_MAX                                      + COMMA +
+				CONSTRAINT + TABLE_NAME + PK_MARKER + PRIMARY_KEY + "(" + COL_FILEID + COMMA + COL_ID + COMMA + COL_EXTERNALFILE + ")" + COMMA +
+				CONSTRAINT + TABLE_NAME + CONSTRAINT_SEPARATOR + COL_FILEID + PK_MARKER + FOREIGN_KEY + "(" + COL_FILEID + ")" + REFERENCES + MediaTableFiles.REFERENCE_TABLE_COL_ID + ON_DELETE_CASCADE +
 			")"
 		);
 	}
 
-	protected static void insertOrUpdateSubtitleTracks(Connection connection, long fileId, DLNAMediaInfo media) throws SQLException {
-		if (connection == null || fileId < 0 || media == null || media.getSubTrackCount() < 1) {
+	protected static void insertOrUpdateSubtitleTracks(Connection connection, long fileId, MediaInfo media) throws SQLException {
+		if (connection == null || fileId < 0 || media == null) {
 			return;
 		}
 
-		String columns = "FILEID, ID, LANG, TITLE, FORMAT_TYPE, EXTERNALFILE, CHARSET ";
+		int trackCount = media.getSubtitleTrackCount();
+		try (
+			PreparedStatement updateStatment = connection.prepareStatement(SQL_DELETE_BY_FILEID_ID_GREATER_OR_EQUAL);
+		) {
+			updateStatment.setLong(1, fileId);
+			updateStatment.setInt(2, trackCount);
+			updateStatment.executeUpdate();
+		}
+
+		if (trackCount == 0) {
+			return;
+		}
 
 		try (
 			PreparedStatement updateStatement = connection.prepareStatement(
-				"SELECT " +
-					"FILEID, ID, LANG, TITLE, FORMAT_TYPE, EXTERNALFILE, CHARSET " +
-				"FROM " + TABLE_NAME + " " +
-				"WHERE " +
-					"FILEID = ? AND ID = ? AND EXTERNALFILE = ?",
+				SQL_GET_ALL_FILEID_ID_EXTERNALFILE,
 				ResultSet.TYPE_FORWARD_ONLY,
 				ResultSet.CONCUR_UPDATABLE
 			);
-			PreparedStatement insertStatement = connection.prepareStatement(
-				"INSERT INTO " + TABLE_NAME + " (" + columns +	")" +
-				createDefaultValueForInsertStatement(columns)
-			);
 		) {
-			for (DLNAMediaSubtitle subtitleTrack : media.getSubtitlesTracks()) {
+			for (MediaSubtitle subtitleTrack : media.getSubtitlesTracks()) {
+				String externalFile;
+				if (subtitleTrack.getExternalFile() != null) {
+					externalFile = subtitleTrack.getExternalFile().getPath();
+				} else {
+					externalFile = "";
+				}
 				updateStatement.setLong(1, fileId);
 				updateStatement.setInt(2, subtitleTrack.getId());
-				if (subtitleTrack.getExternalFile() != null) {
-					updateStatement.setString(3, subtitleTrack.getExternalFile().getPath());
-				} else {
-					updateStatement.setString(3, "");
-				}
+				updateStatement.setString(3, externalFile);
 				try (ResultSet rs = updateStatement.executeQuery()) {
-					if (rs.next()) {
-						rs.updateString("LANG", StringUtils.left(subtitleTrack.getLang(), SIZE_LANG));
-						rs.updateString("TITLE", StringUtils.left(subtitleTrack.getSubtitlesTrackTitleFromMetadata(), SIZE_MAX));
-						rs.updateInt("FORMAT_TYPE", subtitleTrack.getType().getStableIndex());
-						if (subtitleTrack.getExternalFile() != null) {
-							rs.updateString("EXTERNALFILE", StringUtils.left(subtitleTrack.getExternalFile().getPath(), SIZE_EXTERNALFILE));
-						} else {
-							rs.updateString("EXTERNALFILE", "");
-						}
-						rs.updateString("CHARSET", StringUtils.left(subtitleTrack.getSubCharacterSet(), SIZE_MAX));
-						rs.updateRow();
+					boolean isCreatingNewRecord = !rs.next();
+					if (isCreatingNewRecord) {
+						rs.moveToInsertRow();
+						rs.updateLong(COL_FILEID, fileId);
+						rs.updateInt(COL_ID, subtitleTrack.getId());
+						rs.updateString(COL_EXTERNALFILE, externalFile);
+					}
+					rs.updateString(COL_LANG, StringUtils.left(subtitleTrack.getLang(), SIZE_LANG));
+					updateInteger(rs, COL_STREAMID, subtitleTrack.getStreamOrder());
+					updateLong(rs, COL_OPTIONALID, subtitleTrack.getOptionalId());
+					rs.updateBoolean(COL_DEFAULT_FLAG, subtitleTrack.isDefault());
+					rs.updateBoolean(COL_FORCED_FLAG, subtitleTrack.isForced());
+					rs.updateString(COL_TITLE, StringUtils.left(subtitleTrack.getTitle(), SIZE_MAX));
+					rs.updateInt(COL_FORMAT_TYPE, subtitleTrack.getType().getStableIndex());
+					rs.updateString(COL_CHARSET, StringUtils.left(subtitleTrack.getSubCharacterSet(), SIZE_MAX));
+					if (isCreatingNewRecord) {
+						rs.insertRow();
 					} else {
-						insertStatement.clearParameters();
-						insertStatement.setLong(1, fileId);
-						insertStatement.setInt(2, subtitleTrack.getId());
-						insertStatement.setString(3, StringUtils.left(subtitleTrack.getLang(), SIZE_LANG));
-						insertStatement.setString(4, StringUtils.left(subtitleTrack.getSubtitlesTrackTitleFromMetadata(), SIZE_MAX));
-						insertStatement.setInt(5, subtitleTrack.getType().getStableIndex());
-						if (subtitleTrack.getExternalFile() != null) {
-							insertStatement.setString(6, StringUtils.left(subtitleTrack.getExternalFile().getPath(), SIZE_EXTERNALFILE));
-						} else {
-							insertStatement.setString(6, "");
-						}
-						insertStatement.setString(7, StringUtils.left(subtitleTrack.getSubCharacterSet(), SIZE_MAX));
-						insertStatement.executeUpdate();
+						rs.updateRow();
 					}
 				}
 			}
 		}
 	}
 
-	protected static List<DLNAMediaSubtitle> getSubtitleTracks(Connection connection, long fileId) {
-		List<DLNAMediaSubtitle> result = new ArrayList<>();
+	protected static List<MediaSubtitle> getSubtitleTracks(Connection connection, long fileId) {
+		List<MediaSubtitle> result = new ArrayList<>();
 		List<String> externalFileReferencesToRemove = new ArrayList<>();
 		if (connection == null || fileId < 0) {
 			return result;
@@ -202,19 +235,23 @@ public class MediaTableSubtracks extends MediaTable {
 			stmt.setLong(1, fileId);
 			try (ResultSet elements = stmt.executeQuery()) {
 				while (elements.next()) {
-					String fileName = elements.getString("EXTERNALFILE");
+					String fileName = elements.getString(COL_EXTERNALFILE);
 					File externalFile = StringUtils.isNotBlank(fileName) ? new File(fileName) : null;
 					if (externalFile != null && !externalFile.exists()) {
 						externalFileReferencesToRemove.add(externalFile.getPath());
 						continue;
 					}
-					DLNAMediaSubtitle sub = new DLNAMediaSubtitle();
-					sub.setId(elements.getInt("ID"));
-					sub.setLang(elements.getString("LANG"));
-					sub.setSubtitlesTrackTitleFromMetadata(elements.getString("TITLE"));
-					sub.setType(SubtitleType.valueOfStableIndex(elements.getInt("FORMAT_TYPE")));
+					MediaSubtitle sub = new MediaSubtitle();
+					sub.setId(elements.getInt(COL_ID));
+					sub.setLang(elements.getString(COL_LANG));
+					sub.setStreamOrder(toInteger(elements, COL_STREAMID));
+					sub.setOptionalId(toLong(elements, COL_OPTIONALID));
+					sub.setDefault(elements.getBoolean(COL_DEFAULT_FLAG));
+					sub.setForced(elements.getBoolean(COL_FORCED_FLAG));
+					sub.setTitle(elements.getString(COL_TITLE));
+					sub.setType(SubtitleType.valueOfStableIndex(elements.getInt(COL_FORMAT_TYPE)));
 					sub.setExternalFileOnly(externalFile);
-					sub.setSubCharacterSet(elements.getString("CHARSET"));
+					sub.setSubCharacterSet(elements.getString(COL_CHARSET));
 					LOGGER.trace("Adding subtitles from the database: {}", sub.toString());
 					result.add(sub);
 				}
@@ -241,4 +278,5 @@ public class MediaTableSubtracks extends MediaTable {
 
 		return result;
 	}
+
 }

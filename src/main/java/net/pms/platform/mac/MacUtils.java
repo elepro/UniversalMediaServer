@@ -20,6 +20,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.management.ManagementFactory;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.URI;
@@ -28,6 +29,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -37,6 +39,7 @@ import net.pms.service.sleep.AbstractSleepWorker;
 import net.pms.service.sleep.PreventSleepMode;
 import net.pms.service.sleep.SleepManager;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -180,23 +183,29 @@ public class MacUtils extends PlatformUtils {
 
 	@Override
 	public List<Path> getDefaultFolders() {
-		List<Path> result = new ArrayList<>();
-		result.addAll(NSFoundation.nsSearchPathForDirectoriesInDomains(
-			NSFoundation.NSSearchPathDirectory.NSMoviesDirectory,
-			NSFoundation.NSSearchPathDomainMask.NSAllDomainsMask,
-			true
-		));
-		result.addAll(NSFoundation.nsSearchPathForDirectoriesInDomains(
-			NSFoundation.NSSearchPathDirectory.NSMusicDirectory,
-			NSFoundation.NSSearchPathDomainMask.NSAllDomainsMask,
-			true
-		));
-		result.addAll(NSFoundation.nsSearchPathForDirectoriesInDomains(
-			NSFoundation.NSSearchPathDirectory.NSPicturesDirectory,
-			NSFoundation.NSSearchPathDomainMask.NSAllDomainsMask,
-			true
-		));
-		return result;
+		synchronized (DEFAULT_FOLDERS_LOCK) {
+			if (defaultFolders == null) {
+				// Lazy initialization
+				List<Path> result = new ArrayList<>();
+				result.addAll(NSFoundation.nsSearchPathForDirectoriesInDomains(
+					NSFoundation.NSSearchPathDirectory.NSMoviesDirectory,
+					NSFoundation.NSSearchPathDomainMask.NSAllDomainsMask,
+					true
+				));
+				result.addAll(NSFoundation.nsSearchPathForDirectoriesInDomains(
+					NSFoundation.NSSearchPathDirectory.NSMusicDirectory,
+					NSFoundation.NSSearchPathDomainMask.NSAllDomainsMask,
+					true
+				));
+				result.addAll(NSFoundation.nsSearchPathForDirectoriesInDomains(
+					NSFoundation.NSSearchPathDirectory.NSPicturesDirectory,
+					NSFoundation.NSSearchPathDomainMask.NSAllDomainsMask,
+					true
+				));
+				defaultFolders = Collections.unmodifiableList(result);
+			}
+			return defaultFolders;
+		}
 	}
 
 	@Override
@@ -269,6 +278,35 @@ public class MacUtils extends PlatformUtils {
 		} else {
 			return "icon-22.png";
 		}
+	}
+
+	@Override
+	public List<String> getRestartCommand(boolean hasOptions) {
+		String libraryPath = ManagementFactory.getRuntimeMXBean().getLibraryPath();
+		if (StringUtils.isNotBlank(libraryPath)) {
+			Pattern pattern = Pattern.compile("(.+?\\.app)/Contents/MacOS");
+			Matcher matcher = pattern.matcher(libraryPath);
+			if (matcher.find()) {
+				String macAppPath = matcher.group(1);
+				if (StringUtils.isNotBlank(macAppPath)) {
+					List<String> restart = new ArrayList<>();
+					restart.add("open");
+					restart.add("-n");
+					restart.add("-a");
+					restart.add(macAppPath);
+					if (hasOptions) {
+						restart.add("--args");
+					}
+					return restart;
+				}
+			}
+		}
+		return getUMSCommand();
+	}
+
+	@Override
+	public String getShutdownCommand() {
+		return "shutdown -h now";
 	}
 
 	/**

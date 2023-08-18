@@ -40,9 +40,6 @@ import net.pms.database.MediaTableTVSeries;
 import net.pms.database.MediaTableVideoMetadata;
 import net.pms.dlna.ByteRange;
 import net.pms.dlna.CodeEnter;
-import net.pms.dlna.DLNAMediaChapter;
-import net.pms.dlna.DLNAMediaInfo;
-import net.pms.dlna.DLNAMediaSubtitle;
 import net.pms.dlna.DLNAResource;
 import net.pms.dlna.DLNAThumbnailInputStream;
 import net.pms.dlna.DVDISOTitle;
@@ -51,14 +48,12 @@ import net.pms.dlna.DbIdResourceLocator;
 import net.pms.dlna.RealFile;
 import net.pms.dlna.virtual.MediaLibraryFolder;
 import net.pms.dlna.virtual.VirtualVideoAction;
-import net.pms.encoders.Engine;
 import net.pms.encoders.EngineFactory;
 import net.pms.encoders.FFmpegWebVideo;
 import net.pms.encoders.HlsHelper;
 import net.pms.encoders.ImageEngine;
 import net.pms.encoders.StandardEngineId;
 import net.pms.formats.Format;
-import net.pms.formats.v2.SubtitleType;
 import net.pms.iam.Account;
 import net.pms.iam.AuthService;
 import net.pms.iam.Permissions;
@@ -69,6 +64,9 @@ import net.pms.image.ImageInfo;
 import net.pms.image.ImagesUtil;
 import net.pms.io.OutputParams;
 import net.pms.io.ProcessWrapper;
+import net.pms.media.MediaInfo;
+import net.pms.media.chapter.MediaChapter;
+import net.pms.media.subtitle.MediaSubtitle;
 import net.pms.network.HTTPResource;
 import net.pms.network.webguiserver.GuiHttpServlet;
 import net.pms.network.webguiserver.ServerSentEvents;
@@ -81,7 +79,6 @@ import net.pms.util.APIUtils;
 import net.pms.util.FileUtil;
 import net.pms.util.FullyPlayed;
 import net.pms.util.PropertiesUtil;
-import net.pms.util.SubtitleUtils;
 import net.pms.util.UMSUtils;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.lang.StringUtils;
@@ -309,7 +306,7 @@ public class PlayerApiServlet extends GuiHttpServlet {
 	}
 
 	private JsonObject getBrowsePage(Renderer renderer, String id, String search, String lang) throws IOException, InterruptedException {
-		PMS.REALTIME_LOCK.lock();
+		PMS.REALTIME_LOCK.lockInterruptibly();
 		try {
 			LOGGER.debug("Make browse page " + id);
 			JsonObject result = new JsonObject();
@@ -480,9 +477,9 @@ public class PlayerApiServlet extends GuiHttpServlet {
 					folder.isTVSeries() &&
 					CONFIGURATION.getUseCache()
 				) {
-					JsonObject apiMetadata = getAPIMetadataAsJsonObject(rootResource, true, renderer, lang);
-					if (apiMetadata != null) {
-						result.add("metadata", apiMetadata);
+					JsonObject metadata = getMetadataAsJsonObject(rootResource, true, renderer, lang);
+					if (metadata != null) {
+						result.add("metadata", metadata);
 					}
 				}
 
@@ -604,7 +601,7 @@ public class PlayerApiServlet extends GuiHttpServlet {
 	}
 
 	private JsonObject getPlayPage(WebGuiRenderer renderer, String id, String lang) throws IOException, InterruptedException {
-		PMS.REALTIME_LOCK.lock();
+		PMS.REALTIME_LOCK.lockInterruptibly();
 		try {
 			LOGGER.debug("Make play page " + id);
 			JsonObject result = new JsonObject();
@@ -638,21 +635,13 @@ public class PlayerApiServlet extends GuiHttpServlet {
 			media.addProperty("mediaType", isVideo ? "video" : isAudio ? "audio" : isImage ? "image" : "");
 			if (isVideo) {
 				if (CONFIGURATION.getUseCache()) {
-					JsonObject apiMetadata = getAPIMetadataAsJsonObject(rootResource, false, renderer, lang);
-					media.add("metadata", apiMetadata);
+					JsonObject metadata = getMetadataAsJsonObject(rootResource, false, renderer, lang);
+					media.add("metadata", metadata);
 				}
 				media.addProperty("isVideoWithChapters", rootResource.getMedia() != null && rootResource.getMedia().hasChapters());
-				if (mime.equals(FormatConfiguration.MIMETYPE_AUTO)) {
-					if (rootResource.getMedia() != null && rootResource.getMedia().getMimeType() != null) {
-						mime = rootResource.getMedia().getMimeType();
-					}
-				}
-
-				if (!directmime(mime) || transMp4(mime, rootResource.getMedia()) || rootResource.isResume()) {
-					mime = renderer.getVideoMimeType();
-				}
-				if (rootResource.getMedia() != null && rootResource.getMedia().getLastPlaybackPosition() != null && rootResource.getMedia().getLastPlaybackPosition() > 0) {
-					media.addProperty("resumePosition", rootResource.getMedia().getLastPlaybackPosition().intValue());
+				mime = renderer.getVideoMimeType();
+				if (rootResource.getMediaStatus() != null && rootResource.getMediaStatus().getLastPlaybackPosition() != null && rootResource.getMediaStatus().getLastPlaybackPosition() > 0) {
+					media.addProperty("resumePosition", rootResource.getMediaStatus().getLastPlaybackPosition().intValue());
 				}
 			}
 
@@ -681,29 +670,6 @@ public class PlayerApiServlet extends GuiHttpServlet {
 				media.addProperty("mime", mime);
 			}
 
-			if (isVideo && CONFIGURATION.getWebPlayerSubs()) {
-				// only if subs are requested as <track> tags
-				// otherwise we'll transcode them in
-				boolean isFFmpegFontConfig = CONFIGURATION.isFFmpegFontConfig();
-				if (isFFmpegFontConfig) { // do not apply fontconfig to flowplayer subs
-					CONFIGURATION.setFFmpegFontConfig(false);
-				}
-				OutputParams p = new OutputParams(CONFIGURATION);
-				p.setSid(rootResource.getMediaSubtitle());
-				Engine.setAudioAndSubs(rootResource, p);
-				if (p.getSid() != null && p.getSid().getType().isText()) {
-					try {
-						File subFile = SubtitleUtils.getSubtitles(rootResource, rootResource.getMedia(), p, CONFIGURATION, SubtitleType.WEBVTT);
-						LOGGER.debug("subFile " + subFile);
-						if (subFile != null) {
-							media.addProperty("sub", subFile.getName());
-						}
-					} catch (IOException e) {
-						LOGGER.debug("error when doing sub file " + e);
-					}
-				}
-				CONFIGURATION.setFFmpegFontConfig(isFFmpegFontConfig); // return back original fontconfig value
-			}
 			medias.add(media);
 			result.add("medias", medias);
 			result.add("folders", jFolders);
@@ -965,11 +931,11 @@ public class PlayerApiServlet extends GuiHttpServlet {
 			LOGGER.debug("media unkonwn");
 			return false;
 		}
-		DLNAMediaSubtitle sid = null;
+		MediaSubtitle sid = null;
 		String mimeType = renderer.getMimeType(resource);
-		DLNAMediaInfo media = resource.getMedia();
+		MediaInfo media = resource.getMedia();
 		if (media == null) {
-			media = new DLNAMediaInfo();
+			media = new MediaInfo();
 			resource.setMedia(media);
 		}
 		if (mimeType.equals(FormatConfiguration.MIMETYPE_AUTO) && media.getMimeType() != null) {
@@ -977,18 +943,15 @@ public class PlayerApiServlet extends GuiHttpServlet {
 		}
 		resource.setDefaultRenderer(renderer);
 		if (resource.getFormat().isVideo()) {
-			if (!directmime(mimeType) || transMp4(mimeType, media)) {
-				mimeType = renderer.getVideoMimeType();
-				// TODO: Use normal engine priorities instead of the following hacks
-				if (FileUtil.isUrl(resource.getSystemName())) {
-					if (FFmpegWebVideo.isYouTubeURL(resource.getSystemName())) {
-						resource.setEngine(EngineFactory.getEngine(StandardEngineId.YOUTUBE_DL, false, false));
-					} else {
-						resource.setEngine(EngineFactory.getEngine(StandardEngineId.FFMPEG_WEB_VIDEO, false, false));
-					}
-				} else if (!(resource instanceof DVDISOTitle)) {
-					resource.setEngine(EngineFactory.getEngine(StandardEngineId.FFMPEG_VIDEO, false, false));
+			mimeType = renderer.getVideoMimeType();
+			if (FileUtil.isUrl(resource.getSystemName())) {
+				if (FFmpegWebVideo.isYouTubeURL(resource.getSystemName())) {
+					resource.setEngine(EngineFactory.getEngine(StandardEngineId.YOUTUBE_DL, false, false));
+				} else {
+					resource.setEngine(EngineFactory.getEngine(StandardEngineId.FFMPEG_WEB_VIDEO, false, false));
 				}
+			} else if (!(resource instanceof DVDISOTitle)) {
+				resource.setEngine(EngineFactory.getEngine(StandardEngineId.FFMPEG_VIDEO, false, false));
 			}
 			if (
 				PMS.getConfiguration().getWebPlayerSubs() &&
@@ -999,9 +962,7 @@ public class PlayerApiServlet extends GuiHttpServlet {
 				sid = resource.getMediaSubtitle();
 				resource.setMediaSubtitle(null);
 			}
-		}
-
-		if (!directmime(mimeType) && resource.getFormat().isAudio()) {
+		} else if (resource.getFormat().isAudio() && !directmime(mimeType)) {
 			resource.setEngine(EngineFactory.getEngine(StandardEngineId.FFMPEG_AUDIO, false, false));
 		}
 
@@ -1010,10 +971,10 @@ public class PlayerApiServlet extends GuiHttpServlet {
 			if (resource.getFormat().isVideo() && HTTPResource.HLS_TYPEMIME.equals(renderer.getVideoMimeType())) {
 				resp.setHeader("Server", PMS.get().getServerName());
 				if (uri.endsWith("/chapters.vtt")) {
-					String response = DLNAMediaChapter.getWebVtt(resource);
+					String response = MediaChapter.getWebVtt(resource);
 					WebGuiServletHelper.respond(req, resp, response, 200, HTTPResource.WEBVTT_TYPEMIME);
 				} else if (uri.endsWith("/chapters.json")) {
-					String response = DLNAMediaChapter.getHls(resource);
+					String response = MediaChapter.getHls(resource);
 					WebGuiServletHelper.respond(req, resp, response, 200, HTTPResource.JSON_TYPEMIME);
 				} else if (rawData.length > 5 && "hls".equals(rawData[4])) {
 					if (rawData[5].endsWith(".m3u8")) {
@@ -1033,13 +994,13 @@ public class PlayerApiServlet extends GuiHttpServlet {
 							} else if (uri.endsWith(".vtt")) {
 								resp.setContentType(HTTPResource.WEBVTT_TYPEMIME);
 							}
+							resp.setHeader("Transfer-Encoding", "chunked");
 							resp.setStatus(200);
-							resp.setContentLength(in.available());
 							renderer.start(resource);
 							if (LOGGER.isTraceEnabled()) {
 								WebGuiServletHelper.logHttpServletResponse(req, resp, null, in);
 							}
-							OutputStream os = resp.getOutputStream();
+							OutputStream os = new BufferedOutputStream(resp.getOutputStream(), 512 * 1024);
 							WebGuiServletHelper.copyStreamAsync(in, os, async);
 						} else {
 							resp.setStatus(500);
@@ -1058,7 +1019,7 @@ public class PlayerApiServlet extends GuiHttpServlet {
 				LOGGER.debug("Sending {} with mime type {} to {}", resource, mimeType, renderer);
 				InputStream in = resource.getInputStream(range, renderer);
 				long len = resource.length();
-				boolean isTranscoding = len == DLNAMediaInfo.TRANS_SIZE;
+				boolean isTranscoding = len == MediaInfo.TRANS_SIZE;
 				resp.setContentType(mimeType);
 				resp.setHeader("Server", PMS.get().getServerName());
 				resp.setHeader("Connection", "keep-alive");
@@ -1110,7 +1071,7 @@ public class PlayerApiServlet extends GuiHttpServlet {
 	 *         metadata names and when applicable, associated IDs, or null
 	 *         when there is no metadata
 	 */
-	private static JsonObject getAPIMetadataAsJsonObject(DLNAResource resource, boolean isTVSeries, Renderer renderer, String lang) {
+	private static JsonObject getMetadataAsJsonObject(DLNAResource resource, boolean isTVSeries, Renderer renderer, String lang) {
 		JsonObject result = null;
 		try (Connection connection = MediaDatabase.getConnectionIfAvailable()) {
 			if (connection != null) {
@@ -1133,45 +1094,45 @@ public class PlayerApiServlet extends GuiHttpServlet {
 		DLNAResource directorsFolder = null;
 		DLNAResource genresFolder = null;
 		DLNAResource ratedFolder = null;
+		if (CONFIGURATION.isShowMediaLibraryFolder()) {
+			// prepare to get IDs of certain metadata resources, to make them clickable
+			List<DLNAResource> rootFolderChildren = renderer.getRootFolder().getDLNAResources("0", true, 0, 0, renderer, Messages.getString("MediaLibrary"));
+			UMSUtils.filterResourcesByName(rootFolderChildren, Messages.getString("MediaLibrary"), true, true);
+			if (rootFolderChildren.isEmpty()) {
+				return null;
+			}
+			DLNAResource mediaLibraryFolder = rootFolderChildren.get(0);
+			List<DLNAResource> mediaLibraryChildren = mediaLibraryFolder.getDLNAResources(mediaLibraryFolder.getId(), true, 0, 0, renderer, Messages.getString("Video"));
+			UMSUtils.filterResourcesByName(mediaLibraryChildren, Messages.getString("Video"), true, true);
+			DLNAResource videoFolder = mediaLibraryChildren.get(0);
 
-		// prepare to get IDs of certain metadata resources, to make them clickable
-		List<DLNAResource> rootFolderChildren = renderer.getRootFolder().getDLNAResources("0", true, 0, 0, renderer, Messages.getString("MediaLibrary"));
-		UMSUtils.filterResourcesByName(rootFolderChildren, Messages.getString("MediaLibrary"), true, true);
-		if (rootFolderChildren.isEmpty()) {
-			return null;
-		}
-		DLNAResource mediaLibraryFolder = rootFolderChildren.get(0);
-		List<DLNAResource> mediaLibraryChildren = mediaLibraryFolder.getDLNAResources(mediaLibraryFolder.getId(), true, 0, 0, renderer, Messages.getString("Video"));
-		UMSUtils.filterResourcesByName(mediaLibraryChildren, Messages.getString("Video"), true, true);
-		DLNAResource videoFolder = mediaLibraryChildren.get(0);
+			boolean isRelatedToTV = isTVSeries || resource.isEpisodeWithinSeasonFolder() || resource.isEpisodeWithinTVSeriesFolder();
+			String folderName = isRelatedToTV ? Messages.getString("TvShows") : Messages.getString("Movies");
+			List<DLNAResource> videoFolderChildren = videoFolder.getDLNAResources(videoFolder.getId(), true, 0, 0, renderer, folderName);
+			UMSUtils.filterResourcesByName(videoFolderChildren, folderName, true, true);
+			DLNAResource tvShowsOrMoviesFolder = videoFolderChildren.get(0);
 
-		boolean isRelatedToTV = isTVSeries || resource.isEpisodeWithinSeasonFolder() || resource.isEpisodeWithinTVSeriesFolder();
-		String folderName = isRelatedToTV ? Messages.getString("TvShows") : Messages.getString("Movies");
-		List<DLNAResource> videoFolderChildren = videoFolder.getDLNAResources(videoFolder.getId(), true, 0, 0, renderer, folderName);
-		UMSUtils.filterResourcesByName(videoFolderChildren, folderName, true, true);
-		DLNAResource tvShowsOrMoviesFolder = videoFolderChildren.get(0);
+			List<DLNAResource> tvShowsOrMoviesChildren = tvShowsOrMoviesFolder.getDLNAResources(tvShowsOrMoviesFolder.getId(), true, 0, 0, renderer, Messages.getString("FilterByInformation"));
+			UMSUtils.filterResourcesByName(tvShowsOrMoviesChildren, Messages.getString("FilterByInformation"), true, true);
+			DLNAResource filterByInformationFolder = tvShowsOrMoviesChildren.get(0);
 
-		List<DLNAResource> tvShowsOrMoviesChildren = tvShowsOrMoviesFolder.getDLNAResources(tvShowsOrMoviesFolder.getId(), true, 0, 0, renderer, Messages.getString("FilterByInformation"));
-		UMSUtils.filterResourcesByName(tvShowsOrMoviesChildren, Messages.getString("FilterByInformation"), true, true);
-		DLNAResource filterByInformationFolder = tvShowsOrMoviesChildren.get(0);
+			List<DLNAResource> filterByInformationChildren = filterByInformationFolder.getDLNAResources(filterByInformationFolder.getId(), true, 0, 0, renderer, Messages.getString("Genres"));
 
-		List<DLNAResource> filterByInformationChildren = filterByInformationFolder.getDLNAResources(filterByInformationFolder.getId(), true, 0, 0, renderer, Messages.getString("Genres"));
-
-		for (int filterByInformationChildrenIterator = 0; filterByInformationChildrenIterator < filterByInformationChildren.size(); filterByInformationChildrenIterator++) {
-			DLNAResource filterByInformationChild = filterByInformationChildren.get(filterByInformationChildrenIterator);
-			if (filterByInformationChild.getDisplayName().equals(Messages.getString("Actors"))) {
-				actorsFolder = filterByInformationChild;
-			} else if (filterByInformationChild.getDisplayName().equals(Messages.getString("Country"))) {
-				countriesFolder = filterByInformationChild;
-			} else if (filterByInformationChild.getDisplayName().equals(Messages.getString("Director"))) {
-				directorsFolder = filterByInformationChild;
-			} else if (filterByInformationChild.getDisplayName().equals(Messages.getString("Genres"))) {
-				genresFolder = filterByInformationChild;
-			} else if (filterByInformationChild.getDisplayName().equals(Messages.getString("Rated"))) {
-				ratedFolder = filterByInformationChild;
+			for (int filterByInformationChildrenIterator = 0; filterByInformationChildrenIterator < filterByInformationChildren.size(); filterByInformationChildrenIterator++) {
+				DLNAResource filterByInformationChild = filterByInformationChildren.get(filterByInformationChildrenIterator);
+				if (filterByInformationChild.getDisplayName().equals(Messages.getString("Actors"))) {
+					actorsFolder = filterByInformationChild;
+				} else if (filterByInformationChild.getDisplayName().equals(Messages.getString("Country"))) {
+					countriesFolder = filterByInformationChild;
+				} else if (filterByInformationChild.getDisplayName().equals(Messages.getString("Director"))) {
+					directorsFolder = filterByInformationChild;
+				} else if (filterByInformationChild.getDisplayName().equals(Messages.getString("Genres"))) {
+					genresFolder = filterByInformationChild;
+				} else if (filterByInformationChild.getDisplayName().equals(Messages.getString("Rated"))) {
+					ratedFolder = filterByInformationChild;
+				}
 			}
 		}
-
 		addJsonArrayDlnaIds(result, "actors", actorsFolder, renderer);
 		addJsonArrayDlnaIds(result, "countries", countriesFolder, renderer);
 		addJsonArrayDlnaIds(result, "directors", directorsFolder, renderer);
@@ -1187,19 +1148,21 @@ public class PlayerApiServlet extends GuiHttpServlet {
 			JsonElement element = object.remove(memberName);
 			if (element.isJsonArray()) {
 				JsonArray array = element.getAsJsonArray();
-				if (!array.isEmpty() && folder != null) {
+				if (!array.isEmpty()) {
 					JsonArray dlnaChilds = new JsonArray();
 					for (JsonElement child : array) {
 						if (child.isJsonPrimitive()) {
 							String value = child.getAsString();
-							List<DLNAResource> folderChildren = folder.getDLNAResources(folder.getId(), true, 0, 0, renderer, value);
-							UMSUtils.filterResourcesByName(folderChildren, value, true, true);
-							if (!folderChildren.isEmpty()) {
-								JsonObject dlnaChild = new JsonObject();
-								dlnaChild.addProperty("id", folderChildren.get(0).getId());
-								dlnaChild.addProperty("name", value);
-								dlnaChilds.add(dlnaChild);
+							JsonObject dlnaChild = new JsonObject();
+							dlnaChild.addProperty("name", value);
+							if (folder != null) {
+								List<DLNAResource> folderChildren = folder.getDLNAResources(folder.getId(), true, 0, 0, renderer, value);
+								UMSUtils.filterResourcesByName(folderChildren, value, true, true);
+								if (!folderChildren.isEmpty()) {
+									dlnaChild.addProperty("id", folderChildren.get(0).getId());
+								}
 							}
+							dlnaChilds.add(dlnaChild);
 						}
 					}
 					object.add(memberName, dlnaChilds);
@@ -1211,16 +1174,18 @@ public class PlayerApiServlet extends GuiHttpServlet {
 	private static void addStringDlnaId(final JsonObject object, final String memberName, final DLNAResource folder, final Renderer renderer) {
 		if (object.has(memberName)) {
 			JsonElement element = object.remove(memberName);
-			if (element.isJsonPrimitive() && folder != null) {
+			if (element.isJsonPrimitive()) {
 				String value = element.getAsString();
-				List<DLNAResource> folderChildren = folder.getDLNAResources(folder.getId(), true, 0, 0, renderer, value);
-				UMSUtils.filterResourcesByName(folderChildren, value, true, true);
-				if (!folderChildren.isEmpty()) {
-					JsonObject dlnaChild = new JsonObject();
-					dlnaChild.addProperty("id", folderChildren.get(0).getId());
-					dlnaChild.addProperty("name", value);
-					object.add(memberName, dlnaChild);
+				JsonObject dlnaChild = new JsonObject();
+				dlnaChild.addProperty("name", value);
+				if (folder != null) {
+					List<DLNAResource> folderChildren = folder.getDLNAResources(folder.getId(), true, 0, 0, renderer, value);
+					UMSUtils.filterResourcesByName(folderChildren, value, true, true);
+					if (!folderChildren.isEmpty()) {
+						dlnaChild.addProperty("id", folderChildren.get(0).getId());
+					}
 				}
+				object.add(memberName, dlnaChild);
 			}
 		}
 	}
@@ -1262,11 +1227,6 @@ public class PlayerApiServlet extends GuiHttpServlet {
 			mime.equals(HTTPResource.JPEG_TYPEMIME) ||
 			mime.equals(HTTPResource.GIF_TYPEMIME)
 		);
-	}
-
-	private static boolean transMp4(String mime, DLNAMediaInfo media) {
-		LOGGER.debug("mp4 profile " + media.getH264Profile());
-		return mime.equals(HTTPResource.MP4_TYPEMIME) && (PMS.getConfiguration().isWebPlayerMp4Trans() || media.getAvcAsInt() >= 40);
 	}
 
 }

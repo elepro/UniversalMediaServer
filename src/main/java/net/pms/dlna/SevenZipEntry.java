@@ -23,6 +23,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import net.pms.formats.Format;
+import net.pms.media.MediaInfo;
+import net.pms.parsers.Parser;
 import net.pms.util.FileUtil;
 import net.sf.sevenzipjbinding.IInArchive;
 import net.sf.sevenzipjbinding.SevenZip;
@@ -69,7 +71,7 @@ public class SevenZipEntry extends DLNAResource implements IPushOutput {
 	@Override
 	public long length() {
 		if (getEngine() != null && getEngine().type() != Format.IMAGE) {
-			return DLNAMediaInfo.TRANS_SIZE;
+			return MediaInfo.TRANS_SIZE;
 		}
 
 		return length;
@@ -100,7 +102,6 @@ public class SevenZipEntry extends DLNAResource implements IPushOutput {
 	public void push(final OutputStream out) throws IOException {
 		Runnable r = () -> {
 			try {
-				// byte data[] = new byte[65536];
 				RandomAccessFile rf = new RandomAccessFile(file, "r");
 
 				arc = SevenZip.openInArchive(null, new RandomAccessFileInStream(rf));
@@ -149,24 +150,17 @@ public class SevenZipEntry extends DLNAResource implements IPushOutput {
 			return;
 		}
 
-		// TODO: found seems not used here
-		boolean found = false;
+		if (getMedia() == null) {
+			setMedia(new MediaInfo());
+		}
 
-		if (!found) {
-			if (getMedia() == null) {
-				setMedia(new DLNAMediaInfo());
-			}
-
-			found = !getMedia().isMediaparsed() && !getMedia().isParsing();
-
-			if (getFormat() != null) {
-				InputFile input = new InputFile();
-				input.setPush(this);
-				input.setSize(length());
-				getFormat().parse(getMedia(), input, getType(), null);
-				if (getMedia() != null && getMedia().isSLS()) {
-					setFormat(getMedia().getAudioVariantFormat());
-				}
+		if (getFormat() != null) {
+			InputFile input = new InputFile();
+			input.setPush(this);
+			input.setSize(length());
+			Parser.parse(getMedia(), input, getFormat(), getType());
+			if (getMedia() != null && getMedia().isSLS()) {
+				setFormat(getMedia().getAudioVariantFormat());
 			}
 		}
 

@@ -47,15 +47,15 @@ import static net.pms.PMS.getConfiguration;
 import net.pms.configuration.UmsConfiguration;
 import net.pms.database.MediaDatabase;
 import net.pms.database.MediaTableFiles;
-import net.pms.dlna.DLNAMediaInfo;
 import net.pms.formats.FormatFactory;
-import net.pms.media.metadata.MediaVideoMetadata;
+import net.pms.media.MediaInfo;
+import net.pms.media.video.metadata.MediaVideoMetadata;
 import net.pms.platform.windows.WindowsProgramPaths;
+import static net.pms.util.Constants.*;
 import net.pms.util.FilePermissions.FileFlag;
 import net.pms.util.StringUtil.LetterCase;
-import static net.pms.util.Constants.*;
-import static org.apache.commons.lang3.StringUtils.*;
 import org.apache.commons.io.FilenameUtils;
+import static org.apache.commons.lang3.StringUtils.*;
 import org.apache.commons.text.WordUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -581,8 +581,8 @@ public class FileUtil {
 	 * one of these strings, the string and everything after them will be
 	 * removed.
 	 */
-	private static final String COMMON_FILE_ENDS = "\\s\\[BD.*|[\\s\\(]DUBBED.*|[\\s\\(]AC3.*|[\\s\\(]NTSC.*|[\\s\\(]TVNZ\\s.*|[\\s\\(]FP\\s.*|[\\s\\(]AAC.*|[\\s\\(]REPACK.*|[\\s\\(]480p.*|[\\s\\(]720p.*|[\\s\\(]m-720p.*|[\\s\\(]900p.*|[\\s\\(]1080i.*|[\\s\\(]1080p.*|[\\s\\(]2160p.*|[\\s\\(]WEB-DL.*|[\\s\\(]HDTV.*|[\\s\\(]DSR.*|[\\s\\(]PDTV.*|[\\s\\(]WS.*|[\\s\\(]HQ.*|[\\s\\(]DVDRip.*|[\\s\\(]TVRiP.*|[\\s\\(]BDRip.*|[\\s\\(]BRRip.*|[\\s\\(]WEBRip.*|[\\s\\(]BluRay.*|[\\s\\(]Blu-ray.*|[\\s\\(]SUBBED.*|[\\s\\(]x264.*|[\\s\\(]x265.*|[\\s\\(]XviD.*|[\\s\\(]Dual\\sAudio.*|[\\s\\(]HSBS.*|[\\s\\(]H-SBS.*|[\\s\\(]RERiP.*|[\\s\\(]DIRFIX.*|[\\s\\(]READNFO.*|[\\s\\(]60FPS.*";
-	private static final String COMMON_FILE_ENDS_MATCH = ".*\\s\\[BD.*|.*[\\s\\(]DUBBED.*|.*[\\s\\(]AC3.*|.*[\\s\\(]NTSC.*|.*[\\s\\(]TVNZ.*|.*[\\s\\(]FP.*|.*[\\s\\(]AAC.*|.*[\\s\\(]REPACK.*|.*[\\s\\(]480p.*|.*[\\s\\(]720p.*|.*[\\s\\(]m-720p.*|.*[\\s\\(]900p.*|.*[\\s\\(]1080i.*|.*[\\s\\(]1080p.*|.*[\\s\\(]2160p.*|.*[\\s\\(]WEB-DL.*|.*[\\s\\(]HDTV.*|.*[\\s\\(]DSR.*|.*[\\s\\(]PDTV.*|.*[\\s\\(]WS.*|.*[\\s\\(]HQ.*|.*[\\s\\(]DVDRip.*|.*[\\s\\(]TVRiP.*|.*[\\s\\(]BDRip.*|.*[\\s\\(]BRRip.*|.*[\\s\\(]WEBRip.*|.*[\\s\\(]BluRay.*|.*[\\s\\(]Blu-ray.*|.*[\\s\\(]SUBBED.*|.*[\\s\\(]x264.*|.*[\\s\\(]x265.*|.*[\\s\\(]XviD.*|.*[\\s\\(]Dual\\sAudio.*|.*[\\s\\(]HSBS.*|.*[\\s\\(]H-SBS.*|.*[\\s\\(]RERiP.*|.*[\\s\\(]DIRFIX.*|.*[\\s\\(]READNFO.*|.*[\\s\\(]60FPS.*";
+	private static final String COMMON_FILE_ENDS = "\\s\\[BD.*|[\\s\\(]DUBBED.*|[\\s\\(]AC3.*|[\\s\\(]NTSC.*|[\\s\\(]TVNZ\\s.*|[\\s\\(]FP\\s.*|[\\s\\(]AAC.*|[\\s\\(]REPACK.*|[\\s\\(]480p.*|[\\s\\(]720p.*|[\\s\\(]m-720p.*|[\\s\\(]900p.*|[\\s\\(]1080i.*|[\\s\\(]1080p.*|[\\s\\(]2160p.*|[\\s\\(]WEB-DL.*|[\\s\\(]HDTV.*|[\\s\\(]DSR.*|[\\s\\(]PDTV.*|[\\s\\(]SDTV.*|[\\s\\(]WS.*|[\\s\\(]HQ.*|[\\s\\(]DVDRip.*|[\\s\\(]TVRiP.*|[\\s\\(]BDRip.*|[\\s\\(]BRRip.*|[\\s\\(]WEBRip.*|[\\s\\(]BluRay.*|[\\s\\(]Blu-ray.*|[\\s\\(]SUBBED.*|[\\s\\(]x264.*|[\\s\\(]x265.*|[\\s\\(]XviD.*|[\\s\\(]Dual\\sAudio.*|[\\s\\(]HSBS.*|[\\s\\(]H-SBS.*|[\\s\\(]RERiP.*|[\\s\\(]DIRFIX.*|[\\s\\(]READNFO.*|[\\s\\(]60FPS.*|[\\s\\(]HDR.*|[\\s\\(]DV[\\s\\(].*";
+	private static final String COMMON_FILE_ENDS_MATCH = ".*\\s\\[BD.*|.*[\\s\\(]DUBBED.*|.*[\\s\\(]AC3.*|.*[\\s\\(]NTSC.*|.*[\\s\\(]TVNZ.*|.*[\\s\\(]FP.*|.*[\\s\\(]AAC.*|.*[\\s\\(]REPACK.*|.*[\\s\\(]480p.*|.*[\\s\\(]720p.*|.*[\\s\\(]m-720p.*|.*[\\s\\(]900p.*|.*[\\s\\(]1080i.*|.*[\\s\\(]1080p.*|.*[\\s\\(]2160p.*|.*[\\s\\(]WEB-DL.*|.*[\\s\\(]HDTV.*|.*[\\s\\(]DSR.*|.*[\\s\\(]PDTV.*|.*[\\s\\(]SDTV.*|.*[\\s\\(]WS.*|.*[\\s\\(]HQ.*|.*[\\s\\(]DVDRip.*|.*[\\s\\(]TVRiP.*|.*[\\s\\(]BDRip.*|.*[\\s\\(]BRRip.*|.*[\\s\\(]WEBRip.*|.*[\\s\\(]BluRay.*|.*[\\s\\(]Blu-ray.*|.*[\\s\\(]SUBBED.*|.*[\\s\\(]x264.*|.*[\\s\\(]x265.*|.*[\\s\\(]XviD.*|.*[\\s\\(]Dual\\sAudio.*|.*[\\s\\(]HSBS.*|.*[\\s\\(]H-SBS.*|.*[\\s\\(]RERiP.*|.*[\\s\\(]DIRFIX.*|.*[\\s\\(]READNFO.*|.*[\\s\\(]60FPS.*|.*[\\s\\(]HDR.*|.*[\\s\\(]DV[\\s\\(].*";
 
 	private static final String COMMON_ANIME_FILE_ENDS = "(?i)\\s\\(1280x720.*|\\s\\(1920x1080.*|\\s\\(720x400.*|\\s[\\[\\(]\\d{3,4}p.*|\\s\\(BD.*|\\s\\[Blu-Ray.*|\\s\\[DVD.*|\\.DVD.*|\\[[0-9a-zA-Z]{8}\\]$|\\[h264.*|R1DVD.*|\\[BD.*|[\\s_]\\(Dual\\sAudio.*|\\s\\[VOSTFR\\].*|\\s\\[HD_\\d{3,4}x\\d{3,4}\\].*";
 	private static final String COMMON_ANIME_FILE_ENDS_MATCH = ".*\\s\\(1280x720.*|.*\\s\\(1920x1080.*|.*\\s\\(720x400.*|.*\\s[\\[\\(]\\d{3,4}p.*|.*\\s\\(BD.*|.*\\s\\[Blu-Ray.*|.*\\s\\[DVD.*|\\.DVD.*|.*\\s\\[[0-9a-zA-Z]{8}\\]$|.*\\s\\[h264.*|.*\\sR1DVD.*|.*\\s\\[BD.*|.*[\\s_]\\(Dual\\sAudio.*|.*\\s\\[VOSTFR\\].*|.*\\s\\[HD_\\d{3,4}x\\d{3,4}\\].*|.*\\s\\(\\d{1,2}bit.*";
@@ -715,7 +715,7 @@ public class FileUtil {
 	 *
 	 * @return The prettified filename
 	 */
-	public static String getFileNamePrettified(String f, DLNAMediaInfo media, boolean isEpisodeWithinSeasonFolder, boolean isEpisodeWithinTVSeriesFolder, String absolutePath) {
+	public static String getFileNamePrettified(String f, MediaInfo media, boolean isEpisodeWithinSeasonFolder, boolean isEpisodeWithinTVSeriesFolder, String absolutePath) {
 		String formattedName;
 
 		String title;
@@ -1648,7 +1648,6 @@ public class FileUtil {
 	 *         match was found
 	 * @throws IOException
 	 */
-	@Nonnull
 	public static CharsetMatch getFileCharsetMatch(@Nonnull File file) throws IOException {
 		InputStream in = new BufferedInputStream(new FileInputStream(file));
 		CharsetDetector detector = new CharsetDetector();
