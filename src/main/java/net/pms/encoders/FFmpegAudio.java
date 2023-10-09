@@ -27,7 +27,6 @@ import net.pms.io.ProcessWrapper;
 import net.pms.io.ProcessWrapperImpl;
 import net.pms.media.MediaInfo;
 import net.pms.network.HTTPResource;
-import net.pms.renderers.Renderer;
 import net.pms.util.PlayerUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,8 +89,9 @@ public class FFmpegAudio extends FFMpegVideo {
 		MediaInfo media,
 		OutputParams params
 	) throws IOException {
-		Renderer renderer = params.getMediaRenderer();
-		UmsConfiguration configuration = renderer.getUmsConfiguration();
+		UmsConfiguration prev = configuration;
+		// Use device-specific pms conf
+		configuration = params.getMediaRenderer().getUmsConfiguration();
 		final String filename = dlna.getFileName();
 		params.setMaxBufferSize(configuration.getMaxAudioBuffer());
 		params.setWaitBeforeStart(2000);
@@ -166,12 +166,12 @@ public class FFmpegAudio extends FFMpegVideo {
 			cmdList.add("" + params.getTimeEnd());
 		}
 
-		if (renderer.isTranscodeToMP3()) {
+		if (params.getMediaRenderer().isTranscodeToMP3()) {
 			cmdList.add("-f");
 			cmdList.add("mp3");
 			cmdList.add("-ab");
 			cmdList.add("320000");
-		} else if (renderer.isTranscodeToWAV()) {
+		} else if (params.getMediaRenderer().isTranscodeToWAV()) {
 			cmdList.add("-f");
 			cmdList.add("wav");
 		} else { // default: LPCM
@@ -180,7 +180,7 @@ public class FFmpegAudio extends FFMpegVideo {
 		}
 
 		if (configuration.isAudioResample()) {
-			if (renderer.isTranscodeAudioTo441()) {
+			if (params.getMediaRenderer().isTranscodeAudioTo441()) {
 				cmdList.add("-ar");
 				cmdList.add("44100");
 				cmdList.add("-ac");
@@ -260,6 +260,7 @@ public class FFmpegAudio extends FFMpegVideo {
 		ProcessWrapperImpl pw = new ProcessWrapperImpl(cmdArray, params);
 		pw.runInNewThread();
 
+		configuration = prev;
 		return pw;
 	}
 
