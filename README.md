@@ -12,7 +12,7 @@ The program streams or transcodes many different media formats with little or no
 It is powered by [FFmpeg][27], [MediaInfo][28], [OpenSubtitles][25], [Crowdin][29], [MEncoder][26], tsMuxeR, AviSynth, VLC and more, which combine to offer support for a wide range of media formats.
 
 ## About This Fork
-This is only for my porpose.
+This is only for my purpose.
 * CUE+WAV works correctly.(and gapless playback)
 * Currently for Windows/Mac(Arm) only.(also Docker in the future)
 
