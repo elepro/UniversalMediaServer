@@ -1,16 +1,103 @@
 # Changelog
 
-## Unreleased
+## [13.8.1](https://github.com/UniversalMediaServer/UniversalMediaServer/compare/13.8.0...13.8.1) (2023-12-08)
 
 ### General
+- Fixed transcoding on renderers with MediaInfo=false
+- Added ability to add end-to-end web browser tests on Chrome, Firefox and Safari via Playwright
+- Improved logging detail and test coverage (thanks, Priyanka Ghosh Dastidar!)
+- Made server tests not run when only front-end code has changed
+
+### Translation updates via Crowdin
+- English (UK) (49%) (thanks, Pete Russell!)
+- Estonian (13%) (thanks, Avernys!)
+- French (100%) (thanks, Fredo1650!)
+- Romanian (48%) (thanks, Bogdan Ungureanu!)
+- Spanish (61%) (thanks, Diego León Giraldo Gómez!)
+
+### Dependencies
+- Bump FFmpeg to 6.1
+- Bump Java to 17.0.9+11
+- Bump MediaInfo to 23.10
+- lock file maintenance
+- update dependency @testing-library/jest-dom to v6.1.5
+- update dependency @testing-library/react to v14.1.2
+- update dependency @types/jest to v29.5.11
+- update dependency @types/lodash to v4.14.202
+- update dependency @types/node to v18.18.13
+- update dependency @types/react to v18.2.40
+- update dependency @types/react-color to v3.0.10
+- update dependency @types/videojs-hls-quality-selector to v1.1.3
+- update dependency axios to v1.6.2
+- update dependency ch.qos.logback:logback-classic to v1.4.12
+- update dependency com.drewnoakes:metadata-extractor to v2.19.0
+- update dependency com.fasterxml.jackson.core:jackson-databind to v2.16.0
+- update dependency com.github.eirslett:frontend-maven-plugin to v1.14.2
+- update dependency com.github.oshi:oshi-core to v6.4.8
+- update dependency com.ibm.icu:icu4j to v74
+- update dependency com.puppycrawl.tools:checkstyle to v10.12.5
+- update dependency com.sun.xml.messaging.saaj:saaj-impl to v3.0.3
+- update dependency com.zaxxer:hikaricp to v5.1.0
+- update dependency commons-io:commons-io to v2.15.1
+- update dependency eslint to v8.54.0
+- update dependency org.apache.commons:commons-lang3 to v3.14.0
+- update dependency org.apache.commons:commons-text to v1.11.0
+- update dependency org.apache.maven.plugins:maven-checkstyle-plugin to v3.3.1
+- update dependency org.apache.maven.plugins:maven-surefire-plugin to v3.2.2
+- update dependency org.codehaus.mojo:exec-maven-plugin to v3.1.1
+- update dependency react-router-dom to v6.20.1
+- update junit5 monorepo to v5.10.1
+- update react monorepo
+- update twelvemonkeys-imageio-version to v3.10.1
+- update typescript-eslint monorepo to v6.12.0
+- update yarn to v3.7.0
+
+## [13.8.0](https://github.com/UniversalMediaServer/UniversalMediaServer/compare/13.7.0...13.8.0) (2023-10-21)
+
+### General
+- System tray icon indicates when an update is available (thanks, Ty Lovejoy!)
 - Faster playback start and seeking via tsMuxeR
 - Fixed broken language parsing for locale-specific variants, like "en (US)" or "fr (CA)"
 - Fixed incorrect DLNA.ORG_PN values for transcoded video
 - Fixed deferring to tsMuxeR when video codec is not supported
 - Fixed settings changes not saving
+- Fixed using MPEG-2 DLNA.ORG_PN value for H.265 videos
+- Fixed some Android-based renderers being incorrectly detected as Pigasus
+- Fixed order of results in Media Library when sorted by date (thanks for reporting, stnnzp!)
+- Fixed migration of IP Filter settings from v12 (thanks, dytlzl!)
+- Fixed UPnP search responses
+- Fixed Live Subtitles folder showing in front page of web player (#3669) (thanks, Priyanka Ghosh Dastidar!)
+
+### Renderers
+- Fixed video support on some Samsung TVs (thanks, Fredo1650!)
 
 ### Dependencies
+- lock file maintenance
+- update actions/checkout action to v4
+- update dependency @testing-library/jest-dom to v6.1.4
+- update dependency @testing-library/user-event to v14.5.1
+- update dependency @types/jest to v29.5.6
+- update dependency @types/lodash to v4.14.200
+- update dependency @types/node to v18.18.6
+- update dependency @types/react to v18.2.22
+- update dependency @types/react-color to v3.0.9
+- update dependency @types/videojs-hls-quality-selector to v1.1.2
+- update dependency axios to v1.5.1
+- update dependency com.fasterxml.jackson.core:jackson-databind to v2.15.3
+- update dependency com.github.eirslett:frontend-maven-plugin to v1.14.0
+- update dependency com.github.oshi:oshi-core to v6.4.6
+- update dependency com.puppycrawl.tools:checkstyle to v10.12.4
+- update dependency com.sun.xml.bind:jaxb-impl to v4.0.4
+- update dependency commons-io:commons-io to v2.14.0
+- update dependency eslint to v8.51.0
+- update dependency org.apache.maven.plugins:maven-enforcer-plugin to v3.4.1
+- update dependency org.slf4j:slf4j-api to v2.0.9
+- update dependency react-router-dom to v6.16.0 
+- update mantine monorepo packages to v6.0.21
+- update react monorepo
 - Update tsMuxeR to 2023-09-20-01-52-31
+- update typescript-eslint monorepo to v6.7.5
+- update yarn to v3.6.4
 
 ## [13.7.0](https://github.com/UniversalMediaServer/UniversalMediaServer/compare/13.6.0...13.7.0) (2023-09-06)
 
