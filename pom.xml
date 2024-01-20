@@ -20,7 +20,7 @@
 	<artifactId>ums</artifactId>
 	<name>Universal Media Server</name>
 	<packaging>jar</packaging>
-	<version>13.8.1-SNAPSHOT</version>
+	<version>13.9.0-SNAPSHOT</version>
 	<url>https://www.universalmediaserver.com/</url>
 	<inceptionYear>2012</inceptionYear>
 
@@ -53,7 +53,7 @@
 	</issueManagement>
 	<properties>
 		<!-- NSIS needs a version without "-SNAPSHOT" or "-b1" -->
-		<project.version.short>13.8.1</project.version.short>
+		<project.version.short>13.9.0</project.version.short>
 		<project.jre-version>17</project.jre-version>
 		<jgoodies-forms-version>1.9.0</jgoodies-forms-version>
 
@@ -91,7 +91,7 @@
 
 			Check the org.slf4j:slf4j-api version of the other libraries before upgrading
 		-->
-		<slf4j-api-version>2.0.9</slf4j-api-version>
+		<slf4j-api-version>2.0.10</slf4j-api-version>
 
 		<!--
 			ch.qos.logback:logback-classic and logback-core is shared with
@@ -105,9 +105,9 @@
 				- su.litvak.chromecast:api-v2
 				- fm.last:coverartarchive-api
 		-->
-		<jackson.version>2.16.0</jackson.version>
+		<jackson.version>2.16.1</jackson.version>
 
-		<surefire-version>3.2.3</surefire-version>
+		<surefire-version>3.2.5</surefire-version>
 
 		<!--
 			net.java.dev.jna:jna-platform is shared with
@@ -567,7 +567,7 @@
 			<!-- Check the org.slf4j:slf4j-api version of the other libraries before upgrading -->
 			<!-- Check the net.java.dev.jna:jna version of the other libraries before upgrading -->
 			<!-- Check the net.java.dev.jna:jna-platform version of the other libraries before upgrading -->
-			<version>6.4.9</version>
+			<version>6.4.10</version>
 			<exclusions>
 				<exclusion>
 					<groupId>org.slf4j</groupId>
@@ -693,7 +693,7 @@
 		<dependency>
 		    <groupId>org.mockito</groupId>
 		    <artifactId>mockito-junit-jupiter</artifactId>
-		    <version>5.8.0</version>
+		    <version>5.9.0</version>
 		    <scope>test</scope>
 		</dependency>
 	</dependencies>
@@ -3520,7 +3520,7 @@
 			</build>
 		</profile>
 		<profile>
-			<id>linter</id>
+			<id>testing-windows</id>
 			<build>
 				<plugins>
 					<plugin>
@@ -3593,6 +3593,13 @@
 							</execution>
 						</executions>
 					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>linter</id>
+			<build>
+				<plugins>
 					<!-- Checkstyle report -->
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
@@ -3602,7 +3609,7 @@
 							<dependency>
 								<groupId>com.puppycrawl.tools</groupId>
 								<artifactId>checkstyle</artifactId>
-								<version>10.12.6</version>
+								<version>10.12.7</version>
 							</dependency>
 						</dependencies>
 						<configuration>

@@ -58,7 +58,6 @@ import net.pms.gui.GuiManager;
 import net.pms.io.*;
 import net.pms.logging.CacheLogger;
 import net.pms.logging.LoggingConfig;
-import net.pms.network.NetworkDeviceFilter;
 import net.pms.network.configuration.NetworkConfiguration;
 import net.pms.network.mediaserver.MediaServer;
 import net.pms.network.webguiserver.WebGuiServer;
@@ -77,7 +76,6 @@ import net.pms.platform.windows.WindowsNamedPipe;
 import net.pms.platform.windows.WindowsUtils;
 import net.pms.renderers.ConnectedRenderers;
 import net.pms.renderers.Renderer;
-import net.pms.renderers.RendererFilter;
 import net.pms.service.LibraryScanner;
 import net.pms.service.Services;
 import net.pms.update.AutoUpdater;
@@ -221,7 +219,6 @@ public class PMS {
 
 	/**
 	 * HTTP server that serves a browser/player of media files.
-	 * Should replace the WebInterfaceServer at end.
 	 */
 	private WebPlayerServer webPlayerServer;
 
@@ -347,7 +344,7 @@ public class PMS {
 		dbgPack = new DbgPacker();
 		tfm = new TempFileMgr();
 
-		// Start this here to let the converison work
+		// Start this here to let the conversion work
 		tfm.schedule();
 
 	}
@@ -404,8 +401,6 @@ public class PMS {
 		// Initialize databases
 		MediaDatabase.init();
 		UserDatabase.init();
-		NetworkDeviceFilter.reset();
-		RendererFilter.reset();
 
 		/**
 		 * Bump the SystemUpdateID state variable because now we will have
@@ -704,6 +699,16 @@ public class PMS {
 			// change of the used interface
 			MediaServer.start();
 			GuiManager.setReloadable(false);
+		});
+	}
+
+	/**
+	 * Shutdown the host machine.
+	 */
+	public void shutdownComputer() {
+		TaskRunner.getInstance().submitNamed("shutdown", true, () -> {
+			SseApiServlet.notify("computer-shutdown", "Shutting down computer", "Server status", "red", true);
+			ProcessUtil.shutDownComputer();
 		});
 	}
 
@@ -1256,7 +1261,7 @@ public class PMS {
 		}
 
 		// check first and last, update since taskkill changed
-		// also check 2nd last since we migh have ", POSSIBLY UNSTABLE" in there
+		// also check 2nd last since we might have ", POSSIBLY UNSTABLE" in there
 		boolean ums = tmp[tmp.length - 1].contains("universal media server") ||
 						tmp[tmp.length - 2].contains("universal media server");
 		return tmp[0].equals("javaw.exe") && ums;

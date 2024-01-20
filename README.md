@@ -39,7 +39,7 @@ To Run:
 * [Website][1]
 * [Forum][9]
 * [Source code][10]
-* [Offical Releases][11]
+* [Official Releases][11]
 * [Issue tracker][12]
 * [Knowledge Base][13]
 * [Wiki][14]
