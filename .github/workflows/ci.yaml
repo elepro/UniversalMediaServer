@@ -29,7 +29,7 @@ jobs:
       - name: Get previous commit SHA
         id: prev_commit
         run: echo "PREV_COMMIT_SHA=$(git rev-parse HEAD~1)" >> $GITHUB_ENV
-      - uses: dorny/paths-filter@v2
+      - uses: dorny/paths-filter@v3
         id: filter
         with:
           base: ${{ env.PREV_COMMIT_SHA }}
@@ -189,8 +189,8 @@ jobs:
           sudo apt-get -y install libmms0
           wget --no-check-certificate https://mediaarea.net/download/binary/libzen0/0.4.41/libzen0v5_0.4.41-1_amd64.xUbuntu_20.04.deb
           sudo dpkg -i libzen0v5_0.4.41-1_amd64.xUbuntu_20.04.deb
-          wget --no-check-certificate https://mediaarea.net/download/binary/libmediainfo0/23.10/libmediainfo0v5_23.10-1_amd64.xUbuntu_20.04.deb
-          sudo dpkg -i libmediainfo0v5_23.10-1_amd64.xUbuntu_20.04.deb
+          wget --no-check-certificate https://mediaarea.net/download/binary/libmediainfo0/24.01/libmediainfo0v5_24.01-1_amd64.xUbuntu_20.04.deb
+          sudo dpkg -i libmediainfo0v5_24.01-1_amd64.xUbuntu_20.04.deb
           mvn verify -P testing -DdisableXmlReport=true
 
   linux-jammy:
@@ -227,8 +227,8 @@ jobs:
           sudo apt-get -y install libmms0
           wget --no-check-certificate https://mediaarea.net/download/binary/libzen0/0.4.41/libzen0v5_0.4.41-1_amd64.xUbuntu_22.04.deb
           sudo dpkg -i libzen0v5_0.4.41-1_amd64.xUbuntu_22.04.deb
-          wget --no-check-certificate https://mediaarea.net/download/binary/libmediainfo0/23.10/libmediainfo0v5_23.10-1_amd64.xUbuntu_22.04.deb
-          sudo dpkg -i libmediainfo0v5_23.10-1_amd64.xUbuntu_22.04.deb
+          wget --no-check-certificate https://mediaarea.net/download/binary/libmediainfo0/24.01/libmediainfo0v5_24.01-1_amd64.xUbuntu_22.04.deb
+          sudo dpkg -i libmediainfo0v5_24.01-1_amd64.xUbuntu_22.04.deb
           mvn verify -P testing -DdisableXmlReport=true
 
   lint:
@@ -269,7 +269,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: dangoslen/dependabot-changelog-helper@v3
         with:
-          activationLabel: 'dependencies'
+          activationLabels: 'dependencies'
+          sort: 'alpha'
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Update Changelog"
