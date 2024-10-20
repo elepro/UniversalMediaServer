@@ -26,8 +26,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import net.pms.PMS;
-import net.pms.encoders.Engine;
-import net.pms.encoders.EngineFactory;
+import net.pms.encoders.TranscodingSettings;
 import net.pms.formats.Format;
 import net.pms.formats.v2.SubtitleType;
 import net.pms.media.subtitle.MediaSubtitle;
@@ -40,7 +39,6 @@ import net.pms.store.item.SevenZipEntry;
 import net.pms.store.item.WebStream;
 import net.pms.store.item.ZippedEntry;
 import net.pms.util.FileUtil;
-import net.pms.util.UMSUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,7 +107,7 @@ public class IOList extends ArrayList<StoreResource> {
 			} catch (IOException e) {
 				LOGGER.debug("Error loading resource list '{}': {}", f, e);
 			}
-			if (PMS.getConfiguration().getSortMethod(f) == UMSUtils.SORT_RANDOM) {
+			if (PMS.getConfiguration().getSortMethod(f) == StoreResourceSorter.SORT_RANDOM) {
 				Collections.shuffle(this);
 			}
 		}
@@ -153,8 +151,8 @@ public class IOList extends ArrayList<StoreResource> {
 
 					sb.append("master:").append(id).append(';');
 					if (r instanceof StoreItem item) {
-						if (item.getEngine() != null) {
-							sb.append("player:").append(item.getEngine().toString()).append(';');
+						if (item.isTranscoded()) {
+							sb.append("trancoding:").append(item.getTranscodingSettings().getId()).append(';');
 						}
 						if (item.isResume()) {
 							sb.append("resume");
@@ -188,15 +186,6 @@ public class IOList extends ArrayList<StoreResource> {
 			out.write(sb.toString());
 			out.flush();
 		}
-	}
-
-	private static Engine findPlayerByName(String playerName, boolean onlyEnabled, boolean onlyAvailable) {
-		for (Engine player : EngineFactory.getEngines(onlyEnabled, onlyAvailable)) {
-			if (playerName.equals(player.getName())) {
-				return player;
-			}
-		}
-		return null;
 	}
 
 	private StoreItem parse(String clazz, String data) {
@@ -233,7 +222,7 @@ public class IOList extends ArrayList<StoreResource> {
 				} catch (NumberFormatException e) {
 					type = Format.UNKNOWN;
 				}
-				return new WebStream(renderer, tmp[0], tmp[1], tmp[2], type);
+				return new WebStream(renderer, tmp[0], tmp[1], tmp[2], type, null);
 			}
 			error = true;
 		}
@@ -276,11 +265,11 @@ public class IOList extends ArrayList<StoreResource> {
 				String subData = null;
 				String resData = null;
 				StoreItem res = null;
-				Engine player = null;
+				TranscodingSettings transcodingSettings = null;
 				while (pos != -1) {
-					if (str.startsWith("player:")) {
-						// find last player
-						player = findPlayerByName(str.substring(7, pos), true, true);
+					if (str.startsWith("trancoding:")) {
+						// find last transcoding settings
+						transcodingSettings = TranscodingSettings.getTranscodingSettings(str.substring(7, pos));
 					}
 					if (str.startsWith("resume")) {
 						// resume data
@@ -307,7 +296,7 @@ public class IOList extends ArrayList<StoreResource> {
 							res.setResume(r);
 						}
 					}
-					res.setEngine(player);
+					res.setTranscodingSettings(transcodingSettings);
 					if (subData != null) {
 						MediaSubtitle s = res.getMediaSubtitle();
 						if (s == null) {

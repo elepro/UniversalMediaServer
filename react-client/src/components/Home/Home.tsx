@@ -80,8 +80,10 @@ const Home = () => {
   }, [renderers, sse]);
 
   useEffect(() => {
-    refreshData();
-  }, [i18n]);
+    if (canView) {
+      refreshData();
+    }
+  }, [canView]);
 
   const refreshData = async () => {
     setLoading(true);
@@ -146,7 +148,7 @@ const Home = () => {
     setSettings('reset', null, true);
   };
 
-  const setSettings = async (endpoint:string, data: any, fromDevice: boolean) => {
+  const setSettings = async (endpoint: string, data: any, fromDevice: boolean) => {
     showNotification({
       id: 'settings-save',
       loading: true,
@@ -160,20 +162,24 @@ const Home = () => {
         updateNotification({
           id: 'settings-save',
           color: 'teal',
-          autoClose:true,
+          autoClose: true,
           loading: false,
           title: i18n.get('Saved'),
           message: i18n.get('ConfigurationSaved'),
           icon: <Check size='1rem' />
         });
-        fromDevice ? refreshDeviceData() : refreshData();
+        if (fromDevice) {
+          refreshDeviceData()
+        } else {
+          refreshData();
+        }
       })
       .catch(function(error) {
         if (!error.response && error.request) {
           updateNotification({
             id: 'settings-save',
             color: 'red',
-            autoClose:true,
+            autoClose: true,
             loading: false,
             title: i18n.get('Error'),
             message: i18n.get('ConfigurationNotReceived'),
@@ -183,7 +189,7 @@ const Home = () => {
           updateNotification({
             id: 'settings-save',
             color: 'red',
-            autoClose:true,
+            autoClose: true,
             loading: false,
             title: i18n.get('Error'),
             message: i18n.get('ConfigurationNotSaved')

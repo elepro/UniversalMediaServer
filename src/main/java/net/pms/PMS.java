@@ -40,9 +40,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.LogManager;
 import java.util.regex.Matcher;
@@ -53,13 +51,12 @@ import javax.imageio.spi.ImageReaderSpi;
 import javax.imageio.spi.ImageWriterSpi;
 import net.pms.configuration.Build;
 import net.pms.configuration.GuiConfiguration;
+import net.pms.configuration.PostUpgrade;
 import net.pms.configuration.RendererConfigurations;
 import net.pms.configuration.UmsConfiguration;
 import net.pms.database.MediaDatabase;
 import net.pms.database.UserDatabase;
 import net.pms.encoders.EngineFactory;
-import net.pms.encoders.FFmpegWebVideo;
-import net.pms.encoders.YoutubeDl;
 import net.pms.external.umsapi.APIUtils;
 import net.pms.external.update.AutoUpdater;
 import net.pms.gui.EConnectionState;
@@ -143,17 +140,6 @@ public class PMS {
 	public static final String NAME = "Universal Media Server";
 	public static final String CROWDIN_LINK = "https://crowdin.com/project/universalmediaserver";
 	public static final String AVS_SEPARATOR = "\1";
-	/**
-	 * A lock to prevent heavy IO tasks from causing browsing to be less
-	 * responsive.
-	 * <p>
-	 * When a task has a high priority (needs to run in realtime), it should
-	 * implement this lock for the duration of their operation. When a task has
-	 * a lower priority, it should use this lock to wait for any realtime task
-	 * to finish, and then immediately unlock, to prevent blocking the next
-	 * realtime task from starting.
-	 */
-	public static final Lock REALTIME_LOCK = new ReentrantLock();
 
 	/**
 	 * Pointer to a running UMS server.
@@ -242,10 +228,12 @@ public class PMS {
 		}
 
 		// Show the language selection dialog before displayBanner();
-		if (!isHeadless() &&
-				!isRunningTests() &&
-				(umsConfiguration.getLanguageRawString() == null ||
-				!Languages.isValid(umsConfiguration.getLanguageRawString()))) {
+		if (
+			!isHeadless() &&
+			!isRunningTests() &&
+			(umsConfiguration.getLanguageRawString() == null ||
+			!Languages.isValid(umsConfiguration.getLanguageRawString()))
+		) {
 			LanguageSelection languageDialog = new LanguageSelection(null, PMS.getLocale(), false);
 			languageDialog.show();
 			if (languageDialog.isAborted()) {
@@ -272,6 +260,8 @@ public class PMS {
 		MediaDatabase.init();
 		Splash.setStatusMessage("InitUserDb");
 		UserDatabase.init();
+		//Post Upgrading
+		PostUpgrade.proceed();
 		Splash.setStatusMessage("InitFilters");
 		NetworkDeviceFilter.reset();
 		RendererFilter.reset();
@@ -321,22 +311,6 @@ public class PMS {
 
 			// It will be shown only once
 			umsConfiguration.setShowInfoAboutVideoAutomaticSetting(false);
-		}
-
-		// Actions that happen only the first time UMS runs
-		if (!umsConfiguration.hasRunOnce()) {
-			Splash.setStatusMessage("InitFirstRun");
-			/*
-			 * Enable youtube-dl once, to ensure that if it is
-			 * disabled, that was done by the user.
-			 */
-			if (!EngineFactory.isEngineActive(YoutubeDl.ID)) {
-				umsConfiguration.setEngineEnabled(YoutubeDl.ID, true);
-				umsConfiguration.setEnginePriorityBelow(YoutubeDl.ID, FFmpegWebVideo.ID);
-			}
-
-			// Ensure this only happens once
-			umsConfiguration.setHasRunOnce();
 		}
 
 		GuiManager.setMediaScanStatus(false);
@@ -900,12 +874,6 @@ public class PMS {
 			SwingUtil.initializeLookAndFeel();
 		}
 
-		if (Build.isUpdatable()) {
-			Splash.setStatusMessage("CheckForUpdates");
-			String serverURL = Build.getUpdateServerURL();
-			autoUpdater = new AutoUpdater(serverURL, getVersion(), getBinariesRevision());
-		}
-
 		if (profilePath != null) {
 			if (!FileUtil.isValidFileName(profilePath.getName())) {
 				LOGGER.warn("Invalid file name in profile argument - using default profile");
@@ -931,10 +899,18 @@ public class PMS {
 				}
 			}
 
-			/* Rename previous log file to .prev
-			* Log file location is unknown at this point, it's finally decided during loadFile() below
-			* but the file is also truncated at the same time, so we'll have to try a qualified guess
-			* for the file location.
+			if (Build.isUpdatable()) {
+				// Splash.setStatusMessage("CheckForUpdates");
+				String serverURL = Build.getUpdateServerURL();
+				autoUpdater = new AutoUpdater(serverURL, getVersion(), getBinariesRevision());
+			}
+
+			/*
+			 * Rename previous log file to .prev
+			 *
+			 * Log file location is unknown at this point, it's finally decided during loadFile() below
+			 * but the file is also truncated at the same time, so we'll have to try a qualified guess
+			 * for the file location.
 			 */
 			// Set root level from configuration here so that logging is available during renameOldLogFile();
 			LoggingConfig.setRootLevel(Level.toLevel(umsConfiguration.getRootLogLevel()));
@@ -1416,11 +1392,17 @@ public class PMS {
 	}
 
 	/**
-	 * @return whether UMS is being run by Surefire or a CI environment like
-	 * GitHub Actions
+	 * @return whether UMS is being run by Surefire, Playwright, or a CI
+	 * environment like GitHub Actions.
 	 */
 	public static boolean isRunningTests() {
-		return System.getProperty("surefire.real.class.path") != null || (System.getenv("CI") != null && System.getenv("CI").equals("true"));
+		return System.getProperty("surefire.real.class.path") != null || (
+			System.getenv("CI") != null &&
+			System.getenv("CI").equals("true")
+		) || (
+			System.getenv("RUNNING_TESTS") != null &&
+			System.getenv("RUNNING_TESTS").equals("true")
+		);
 	}
 
 	/**

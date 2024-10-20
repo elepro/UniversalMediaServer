@@ -671,19 +671,19 @@ public class Renderer extends RendererDeviceConfiguration {
 	}
 
 	public boolean hasPlayControls() {
-		return (controls & PLAYCONTROL) != 0;
+		return (getControls() & PLAYCONTROL) != 0;
 	}
 
 	public boolean hasVolumeControls() {
-		return (controls & VOLUMECONTROL) != 0;
+		return (getControls() & VOLUMECONTROL) != 0;
 	}
 
 	public boolean isControllable() {
-		return controls != 0;
+		return getControls() != 0;
 	}
 
 	public boolean isControllable(int type) {
-		return (controls & type) != 0;
+		return (getControls() & type) != 0;
 	}
 
 	public boolean isActive() {
@@ -721,7 +721,7 @@ public class Renderer extends RendererDeviceConfiguration {
 	 */
 	@Override
 	public int getMaxVideoBitrate() {
-		if (PMS.getConfiguration().isAutomaticMaximumBitrate()) {
+		if (PMS.getConfiguration().isAutomaticMaximumBitrate() && !PMS.isRunningTests()) {
 			try {
 				int calculatedSpeed = calculatedSpeed();
 				if (calculatedSpeed >= 70) { // this should be a wired connection

@@ -26,17 +26,11 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import net.pms.PMS;
 import net.pms.configuration.UmsConfiguration;
-import net.pms.network.mediaserver.MediaServer;
-import net.pms.network.mediaserver.jupnp.transport.impl.JdkHttpServerStreamServer;
-import net.pms.network.mediaserver.jupnp.transport.impl.JdkHttpServletStreamServer;
-import net.pms.network.mediaserver.jupnp.transport.impl.JdkStreamClientConfiguration;
-import net.pms.network.mediaserver.jupnp.transport.impl.JdkStreamClients;
-import net.pms.network.mediaserver.jupnp.transport.impl.NettyStreamServer;
 import net.pms.network.mediaserver.jupnp.transport.impl.UmsDatagramIO;
 import net.pms.network.mediaserver.jupnp.transport.impl.UmsDatagramProcessor;
 import net.pms.network.mediaserver.jupnp.transport.impl.UmsMulticastReceiver;
 import net.pms.network.mediaserver.jupnp.transport.impl.UmsNetworkAddressFactory;
-import net.pms.network.mediaserver.jupnp.transport.impl.UmsStreamServerConfiguration;
+import net.pms.network.mediaserver.jupnp.transport.impl.jetty.JettyTransportConfiguration;
 import net.pms.util.SimpleThreadFactory;
 import org.jupnp.UpnpServiceConfiguration;
 import org.jupnp.binding.xml.DeviceDescriptorBinder;
@@ -53,6 +47,7 @@ import org.jupnp.transport.impl.DatagramIOConfigurationImpl;
 import org.jupnp.transport.impl.GENAEventProcessorImpl;
 import org.jupnp.transport.impl.MulticastReceiverConfigurationImpl;
 import org.jupnp.transport.impl.SOAPActionProcessorImpl;
+import org.jupnp.transport.impl.jetty.StreamClientConfigurationImpl;
 import org.jupnp.transport.spi.DatagramIO;
 import org.jupnp.transport.spi.DatagramProcessor;
 import org.jupnp.transport.spi.GENAEventProcessor;
@@ -245,9 +240,8 @@ public class UmsUpnpServiceConfiguration implements UpnpServiceConfiguration {
 
 	@Override
 	public StreamClient createStreamClient() {
-		return new JdkStreamClients(
-				new JdkStreamClientConfiguration(getStreamClientExecutorService())
-		);
+		ExecutorService executorService = getStreamClientExecutorService();
+		return JettyTransportConfiguration.INSTANCE.createStreamClient(executorService, new StreamClientConfigurationImpl(executorService));
 	}
 
 	public boolean useOwnContentDirectory() {
@@ -256,42 +250,7 @@ public class UmsUpnpServiceConfiguration implements UpnpServiceConfiguration {
 
 	@Override
 	public StreamServer createStreamServer(NetworkAddressFactory networkAddressFactory) {
-		int engineVersion = CONFIGURATION.getServerEngine();
-		if (engineVersion == 0 || !MediaServer.VERSIONS.containsKey(engineVersion)) {
-			engineVersion = MediaServer.DEFAULT_VERSION;
-		}
-		switch (engineVersion) {
-			case 1, 5 -> {
-				return new JdkHttpServerStreamServer(
-						new UmsStreamServerConfiguration(
-								networkAddressFactory.getStreamListenPort(),
-								true
-						)
-				);
-			}
-			case 3 -> {
-				return new JdkHttpServletStreamServer(
-						new UmsStreamServerConfiguration(
-								networkAddressFactory.getStreamListenPort(),
-								true
-						)
-				);
-			}
-			case 2, 4 -> {
-				return new NettyStreamServer(
-						new UmsStreamServerConfiguration(
-								networkAddressFactory.getStreamListenPort(),
-								true
-						)
-				);
-			}
-			default -> {
-				//non listening server
-				return new JdkHttpServerStreamServer(
-						new UmsStreamServerConfiguration()
-				);
-			}
-		}
+		return JettyTransportConfiguration.INSTANCE.createStreamServer(networkAddressFactory.getStreamListenPort());
 	}
 
 	@Override

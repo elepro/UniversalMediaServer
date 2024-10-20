@@ -42,7 +42,6 @@ import net.pms.renderers.devices.MediaScannerDevice;
 import net.pms.store.container.DVDISOFile;
 import net.pms.store.container.PlaylistFolder;
 import net.pms.store.container.RealFolder;
-import net.pms.store.container.VirtualFolder;
 import net.pms.util.FileUtil;
 import net.pms.util.FileWatcher;
 import org.slf4j.Logger;
@@ -115,10 +114,13 @@ public class MediaScanner implements SharedContentListener {
 	private static void scan(StoreContainer resource) {
 		if (running) {
 			for (StoreResource child : resource.getChildren()) {
-				// wait until the realtime lock is released before starting
-				PMS.REALTIME_LOCK.lock();
-				PMS.REALTIME_LOCK.unlock();
-
+				try {
+					// wait until the MediaStore workers release before starting
+					MediaStore.waitWorkers();
+				} catch (InterruptedException ex) {
+					running = false;
+					Thread.currentThread().interrupt();
+				}
 				if (running && child instanceof StoreContainer storeContainer && storeContainer.allowScan()) {
 
 					// Display and log which folder is being scanned
@@ -137,9 +139,6 @@ public class MediaScanner implements SharedContentListener {
 						}
 
 						storeContainer.discoverChildren();
-						if (child instanceof VirtualFolder virtualFolder) {
-							virtualFolder.analyzeChildren();
-						}
 						storeContainer.setDiscovered(true);
 					}
 
@@ -169,8 +168,12 @@ public class MediaScanner implements SharedContentListener {
 		List<SharedContent> sharedContents = SharedContentConfiguration.getSharedContentArray();
 		for (SharedContent sharedContent : sharedContents) {
 			if (sharedContent instanceof FolderContent folder && folder.getFile() != null && folder.isActive()) {
-				StoreResource realSystemFileResource = RENDERER.getMediaStore().createResourceFromFile(folder.getFile());
-				RENDERER.getMediaStore().addChild(realSystemFileResource);
+				StoreResource realSystemFileResource = RENDERER.getMediaStore().createResourceFromFile(folder.getFile(), true);
+				if (realSystemFileResource != null) {
+					RENDERER.getMediaStore().addChild(realSystemFileResource);
+				} else {
+					LOGGER.trace("createResourceFromFile has failed for {}", folder.getFile());
+				}
 			}
 		}
 	}
@@ -182,6 +185,8 @@ public class MediaScanner implements SharedContentListener {
 	public static void startMediaScan() {
 		if (isMediaScanRunning()) {
 			LOGGER.info("Cannot start media scanner: A scan is already in progress");
+		} else if (PMS.isRunningTests()) {
+			LOGGER.debug("Skipping media scanner because UMS is being run by a test");
 		} else {
 			Runnable scan = () -> {
 				try {
@@ -286,9 +291,6 @@ public class MediaScanner implements SharedContentListener {
 				for (StoreResource storeResource : systemFileResources) {
 					if (storeResource instanceof StoreContainer storeContainer) {
 						storeContainer.discoverChildren();
-						if (storeResource instanceof VirtualFolder virtualFolder) {
-							virtualFolder.doRefreshChildren();
-						}
 						storeContainer.setDiscovered(true);
 					}
 				}

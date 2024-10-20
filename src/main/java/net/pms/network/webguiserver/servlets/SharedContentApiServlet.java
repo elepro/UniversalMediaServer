@@ -147,7 +147,8 @@ public class SharedContentApiServlet extends GuiHttpServlet {
 					if (request.has("source")) {
 						String webContentName;
 						try {
-							webContentName = Feed.getFeedTitle(request.get("source").getAsString());
+							String uri = Feed.getFeedUrl(request.get("source").getAsString());
+							webContentName = Feed.getFeedTitle(uri);
 						} catch (Exception e) {
 							webContentName = "";
 						}
@@ -225,7 +226,7 @@ public class SharedContentApiServlet extends GuiHttpServlet {
 			return null;
 		}
 		File[] directories = requestedDirectoryFile.listFiles(
-				(File file) -> file.isDirectory() && !file.isHidden() && !file.getName().startsWith(".")
+				(File file) -> file.isDirectory() && !file.isHidden() && file.canRead() && !file.getName().startsWith(".")
 		);
 		Arrays.sort(directories);
 		JsonArray jsonArray = new JsonArray();

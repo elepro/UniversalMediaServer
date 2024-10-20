@@ -289,7 +289,7 @@ public class MEncoderVideo extends Engine {
 	 *
 	 * @return The maximum bitrate the video should be along with the buffer size using MEncoder vars
 	 */
-	private String addMaximumBitrateConstraints(EncodeOptions encodeOptions, String encodeSettings, MediaInfo media, String quality, Renderer renderer, String audioType) {
+	private String addMaximumBitrateConstraints(EncodeOptions encodeOptions, String encodeSettings, MediaInfo media, String quality, Renderer renderer, String audioType, EncodingFormat encodingFormat) {
 		// Use device-specific ums conf
 		UmsConfiguration configuration = renderer.getUmsConfiguration();
 		MediaVideo defaultVideoTrack = media.getDefaultVideoTrack();
@@ -337,9 +337,9 @@ public class MEncoderVideo extends Engine {
 			 *
 			 * We also apply the correct buffer size in this section.
 			 */
-			if ((renderer.isTranscodeToH264() || renderer.isTranscodeToH265()) && !isXboxOneWebVideo) {
+			if ((encodingFormat.isTranscodeToH264() || encodingFormat.isTranscodeToH265()) && !isXboxOneWebVideo) {
 				if (
-					renderer.isH264Level41Limited() &&
+					renderer.getH264LevelLimit() < 4.2 &&
 					defaultMaxBitrates[0] > 31250
 				) {
 					defaultMaxBitrates[0] = 31250;
@@ -418,7 +418,7 @@ public class MEncoderVideo extends Engine {
 
 	@Override
 	public ProcessWrapper launchTranscode(
-		StoreItem resource,
+		StoreItem item,
 		MediaInfo media,
 		OutputParams params
 	) throws IOException {
@@ -430,8 +430,9 @@ public class MEncoderVideo extends Engine {
 
 		boolean avisynth = isAviSynthEngine();
 
-		final String filename = resource.getFileName();
-		setAudioAndSubs(resource, params);
+		final String filename = item.getFileName();
+		final EncodingFormat encodingFormat = item.getTranscodingSettings().getEncodingFormat();
+		setAudioAndSubs(item, params);
 
 		MediaVideo defaultVideoTrack = media.getDefaultVideoTrack();
 
@@ -456,7 +457,7 @@ public class MEncoderVideo extends Engine {
 		newInput.setFilename(filename);
 		newInput.setPush(params.getStdIn());
 
-		boolean isDVD = resource instanceof DVDISOTitle;
+		boolean isDVD = item instanceof DVDISOTitle;
 
 		encodeOptions.ovccopy  = false;
 		encodeOptions.pcm      = false;
@@ -485,12 +486,12 @@ public class MEncoderVideo extends Engine {
 		if (!configuration.isMencoderMuxWhenCompatible()) {
 			deferToTsmuxer = false;
 			LOGGER.trace(prependTraceReason + "the user setting is disabled");
-		} else if (resource.isInsideTranscodeFolder()) {
+		} else if (item.isInsideTranscodeFolder()) {
 			deferToTsmuxer = false;
 			LOGGER.trace(prependTraceReason + "the file is being played via a MEncoder entry in the TRANSCODE folder.");
-		} else if (!renderer.isVideoStreamTypeSupportedInTranscodingContainer(media)) {
+		} else if (!renderer.isVideoStreamTypeSupportedInTranscodingContainer(media, encodingFormat, FormatConfiguration.MPEGTS)) {
 			deferToTsmuxer = false;
-			LOGGER.debug(prependTraceReason + "the renderer does not support {} inside {}.", defaultVideoTrack.getCodec(), renderer.getTranscodingContainer());
+			LOGGER.debug(prependTraceReason + "the renderer does not support {} inside MPEG-TS.", defaultVideoTrack.getCodec());
 		} else if (params.getSid() != null) {
 			deferToTsmuxer = false;
 			LOGGER.trace(prependTraceReason + "we need to burn subtitles.");
@@ -500,7 +501,7 @@ public class MEncoderVideo extends Engine {
 		} else if (isAviSynthEngine()) {
 			deferToTsmuxer = false;
 			LOGGER.trace(prependTraceReason + "we are using AviSynth.");
-		} else if (defaultVideoTrack.isH264() && renderer.isH264Level41Limited() && !isVideoWithinH264LevelLimits(defaultVideoTrack, renderer)) {
+		} else if (defaultVideoTrack.isH264() && !isVideoWithinH264LevelLimits(defaultVideoTrack, renderer)) {
 			deferToTsmuxer = false;
 			LOGGER.trace(prependTraceReason + "the video stream is not within H.264 level limits for this renderer.");
 		} else if (!isMuxable(defaultVideoTrack, renderer)) {
@@ -549,19 +550,21 @@ public class MEncoderVideo extends Engine {
 
 			if (!nomux) {
 				TsMuxeRVideo tv = (TsMuxeRVideo) EngineFactory.getEngine(StandardEngineId.TSMUXER_VIDEO, false, true);
-				params.setForceFps(getValidFps(media.getFrameRate(), false));
+				if (tv != null) {
+					params.setForceFps(getValidFps(media.getFrameRate(), false));
 
-				if (defaultVideoTrack.getCodec() != null) {
-					if (defaultVideoTrack.isH264()) {
-						params.setForceType("V_MPEG4/ISO/AVC");
-					} else if (defaultVideoTrack.getCodec().startsWith("mpeg2")) {
-						params.setForceType("V_MPEG-2");
-					} else if (defaultVideoTrack.getCodec().equals("vc1")) {
-						params.setForceType("V_MS/VFW/WVC1");
+					if (defaultVideoTrack.getCodec() != null) {
+						if (defaultVideoTrack.isH264()) {
+							params.setForceType("V_MPEG4/ISO/AVC");
+						} else if (defaultVideoTrack.getCodec().startsWith("mpeg2")) {
+							params.setForceType("V_MPEG-2");
+						} else if (defaultVideoTrack.getCodec().equals("vc1")) {
+							params.setForceType("V_MS/VFW/WVC1");
+						}
 					}
-				}
 
-				return tv.launchTranscode(resource, media, params);
+					return tv.launchTranscode(item, media, params);
+				}
 			}
 		} else if (params.getSid() == null && isDVD && configuration.isMencoderRemuxMPEG2() && renderer.isMpeg2Supported()) {
 			String[] expertOptions = getSpecificCodecOptions(
@@ -587,9 +590,9 @@ public class MEncoderVideo extends Engine {
 			}
 		}
 
-		encodeOptions.isTranscodeToMPEGTS = renderer.isTranscodeToMPEGTS();
-		encodeOptions.isTranscodeToH264   = renderer.isTranscodeToH264() || renderer.isTranscodeToH265();
-		encodeOptions.isTranscodeToAAC    = renderer.isTranscodeToAAC();
+		encodeOptions.isTranscodeToMPEGTS = encodingFormat.isTranscodeToMPEGTS();
+		encodeOptions.isTranscodeToH264   = encodingFormat.isTranscodeToH264() || encodingFormat.isTranscodeToH265();
+		encodeOptions.isTranscodeToAAC    = encodingFormat.isTranscodeToAAC();
 
 		final boolean isXboxOneWebVideo = renderer.isXboxOne() && purpose() == VIDEO_WEBSTREAM_ENGINE;
 
@@ -598,7 +601,7 @@ public class MEncoderVideo extends Engine {
 			vcodec = "libx264";
 		} else if (
 			(
-				renderer.isTranscodeToWMV() &&
+				encodingFormat.isTranscodeToWMV() &&
 				!renderer.isXbox360()
 			) ||
 			isXboxOneWebVideo
@@ -638,121 +641,120 @@ public class MEncoderVideo extends Engine {
 			(params.aid.getBitRate() > 370000 && params.aid.getBitRate() < 400000);
 		 */
 
+		final boolean hasAudioStream = params.getAid() != null;
 		final boolean isTsMuxeRVideoEngineActive = EngineFactory.isEngineActive(TsMuxeRVideo.ID);
-		final boolean mencoderAC3RemuxAudioDelayBug = (params.getAid() != null) && (params.getAid().getVideoDelay() != 0) && (params.getTimeSeek() == 0);
-
-		encodeOptions.encodedAudioPassthrough = isTsMuxeRVideoEngineActive &&
-			configuration.isEncodedAudioPassthrough() &&
-			renderer.isWrapEncodedAudioIntoPCM() &&
-			(
-				!isDVD ||
-				configuration.isMencoderRemuxMPEG2()
-			) &&
-			params.getAid() != null &&
-			params.getAid().isNonPCMEncodedAudio() &&
-			!isAviSynthEngine() &&
-			renderer.isMuxLPCMToMpeg();
-
-		if (
-			configuration.isAudioRemuxAC3() &&
-			params.getAid() != null &&
-			params.getAid().isAC3() &&
-			!isAviSynthEngine() &&
-			renderer.isTranscodeToAC3() &&
-			!configuration.isMEncoderNormalizeVolume() &&
-			!combinedCustomOptions.contains("acodec=") &&
-			!encodeOptions.encodedAudioPassthrough &&
-			!isXboxOneWebVideo &&
-			params.getAid().getNumberOfChannels() <= configuration.getAudioChannelCount()
-		) {
-			encodeOptions.ac3Remux = true;
-		} else {
-			// Now check for DTS remux and LPCM streaming
-			encodeOptions.dtsRemux = isTsMuxeRVideoEngineActive &&
-				configuration.isAudioEmbedDtsInPcm() &&
-				(
-					!isDVD ||
-					configuration.isMencoderRemuxMPEG2()
-				) &&
-				params.getAid() != null &&
-				params.getAid().isDTS() &&
-				!isAviSynthEngine() &&
-				renderer.isDTSPlayable() &&
-				!combinedCustomOptions.contains("acodec=");
-			encodeOptions.pcm = isTsMuxeRVideoEngineActive &&
-				configuration.isAudioUsePCM() &&
-				(
-					!isDVD ||
-					configuration.isMencoderRemuxMPEG2()
-				) &&
-				// Disable LPCM transcoding for MP4 container with non-H.264 video as workaround for MEncoder's A/V sync bug
-				!(media.getContainer().equals(FormatConfiguration.MP4) && !defaultVideoTrack.isH264()) &&
-				params.getAid() != null &&
-				(
-					(params.getAid().isDTS() && params.getAid().getNumberOfChannels() <= 6) || // disable 7.1 DTS-HD => LPCM because of channels mapping bug
-					params.getAid().isLossless() ||
-					params.getAid().isTrueHD() ||
-					(
-						!configuration.isMencoderUsePcmForHQAudioOnly() &&
-						(
-							params.getAid().isAC3() ||
-							params.getAid().isMP3() ||
-							params.getAid().isAAC() ||
-							params.getAid().isVorbis() ||
-							// Disable WMA to LPCM transcoding because of mencoder's channel mapping bug
-							// (see CodecUtil.getMixerOutput)
-							// params.aid.isWMA() ||
-							params.getAid().isMpegAudio()
-						)
-					)
-				) &&
-				renderer.isLPCMPlayable() &&
-				!combinedCustomOptions.contains("acodec=");
-		}
-
-		if (encodeOptions.dtsRemux || encodeOptions.pcm || encodeOptions.encodedAudioPassthrough) {
-			params.setLosslessAudio(true);
-			params.setForceFps(getValidFps(media.getFrameRate(), false));
-		}
-
-		// MPEG-2 remux still buggy with MEncoder
-		// TODO when we can still use it?
-		encodeOptions.ovccopy = false;
-
-		if (encodeOptions.pcm && isAviSynthEngine()) {
-			params.setAvidemux(true);
-		}
+		final boolean mencoderAC3RemuxAudioDelayBug = hasAudioStream && (params.getAid().getVideoDelay() != 0) && (params.getTimeSeek() == 0);
 
 		String add = "";
-		if (!combinedCustomOptions.contains("-lavdopts")) {
-			add = " -lavdopts debug=0";
-		}
+		int channels = 2;
+		String channelsString = "";
+		if (hasAudioStream) {
+			encodeOptions.encodedAudioPassthrough = isTsMuxeRVideoEngineActive &&
+				configuration.isEncodedAudioPassthrough() &&
+				renderer.isWrapEncodedAudioIntoPCM() &&
+				(
+					!isDVD ||
+					configuration.isMencoderRemuxMPEG2()
+				) &&
+				params.getAid().isNonPCMEncodedAudio() &&
+				!isAviSynthEngine() &&
+				renderer.isMuxLPCMToMpeg();
 
-		int channels;
-		if (encodeOptions.ac3Remux) {
-			channels = params.getAid().getNumberOfChannels(); // AC-3 remux
-		} else if (encodeOptions.dtsRemux || encodeOptions.encodedAudioPassthrough || (!renderer.isXbox360() && encodeOptions.wmv)) {
-			channels = 2;
-		} else if (
-			params.getAid().getNumberOfChannels() == 8 ||
-			params.getAid().isAAC()
-		) {
-			// MEncoder crashes when trying to downmix 7.1 AAC to 5.1 AC-3
-			channels = 2;
-		} else if (encodeOptions.pcm) {
-			channels = params.getAid().getNumberOfChannels();
-		} else {
-			/**
-			 * Note: MEncoder will output 2 audio channels if the input video had 2 channels
-			 * regardless of us telling it to output 6 (unlike FFmpeg which will output 6).
-			 */
-			channels = configuration.getAudioChannelCount(); // 5.1 max for AC-3 encoding
-		}
-		String channelsString = "-channels " + channels;
-		if (combinedCustomOptions.contains("-channels")) {
-			channelsString = "";
-		}
+			if (
+				configuration.isAudioRemuxAC3() &&
+				params.getAid().isAC3() &&
+				!isAviSynthEngine() &&
+				encodingFormat.isTranscodeToAC3() &&
+				!configuration.isMEncoderNormalizeVolume() &&
+				!combinedCustomOptions.contains("acodec=") &&
+				!encodeOptions.encodedAudioPassthrough &&
+				!isXboxOneWebVideo &&
+				params.getAid().getNumberOfChannels() <= configuration.getAudioChannelCount()
+			) {
+				encodeOptions.ac3Remux = true;
+			} else {
+				// Now check for DTS remux and LPCM streaming
+				encodeOptions.dtsRemux = isTsMuxeRVideoEngineActive &&
+					configuration.isAudioEmbedDtsInPcm() &&
+					(
+						!isDVD ||
+						configuration.isMencoderRemuxMPEG2()
+					) &&
+					params.getAid() != null &&
+					params.getAid().isDTS() &&
+					!isAviSynthEngine() &&
+					renderer.isDTSPlayable() &&
+					!combinedCustomOptions.contains("acodec=");
+				encodeOptions.pcm = isTsMuxeRVideoEngineActive &&
+					configuration.isAudioUsePCM() &&
+					(
+						!isDVD ||
+						configuration.isMencoderRemuxMPEG2()
+					) &&
+					// Disable LPCM transcoding for MP4 container with non-H.264 video as workaround for MEncoder's A/V sync bug
+					!(media.getContainer().equals(FormatConfiguration.MP4) && !defaultVideoTrack.isH264()) &&
+					(
+						(params.getAid().isDTS() && params.getAid().getNumberOfChannels() <= 6) || // disable 7.1 DTS-HD => LPCM because of channels mapping bug
+						params.getAid().isLossless() ||
+						params.getAid().isTrueHD() ||
+						(
+							!configuration.isMencoderUsePcmForHQAudioOnly() &&
+							(
+								params.getAid().isAC3() ||
+								params.getAid().isMP3() ||
+								params.getAid().isAAC() ||
+								params.getAid().isVorbis() ||
+								// Disable WMA to LPCM transcoding because of mencoder's channel mapping bug
+								// (see CodecUtil.getMixerOutput)
+								// params.aid.isWMA() ||
+								params.getAid().isMpegAudio()
+							)
+						)
+					) &&
+					renderer.isLPCMPlayable() &&
+					!combinedCustomOptions.contains("acodec=");
+			}
 
+			if (encodeOptions.dtsRemux || encodeOptions.pcm || encodeOptions.encodedAudioPassthrough) {
+				params.setLosslessAudio(true);
+				params.setForceFps(getValidFps(media.getFrameRate(), false));
+			}
+
+			// MPEG-2 remux still buggy with MEncoder
+			// TODO when we can still use it?
+			encodeOptions.ovccopy = false;
+
+			if (encodeOptions.pcm && isAviSynthEngine()) {
+				params.setAvidemux(true);
+			}
+
+			if (!combinedCustomOptions.contains("-lavdopts")) {
+				add = " -lavdopts debug=0";
+			}
+
+			if (encodeOptions.ac3Remux) {
+				channels = params.getAid().getNumberOfChannels(); // AC-3 remux
+			} else if (encodeOptions.dtsRemux || encodeOptions.encodedAudioPassthrough || (!renderer.isXbox360() && encodeOptions.wmv)) {
+				channels = 2;
+			} else if (
+				params.getAid().getNumberOfChannels() == 8 ||
+				params.getAid().isAAC()
+			) {
+				// MEncoder crashes when trying to downmix 7.1 AAC to 5.1 AC-3
+				channels = 2;
+			} else if (encodeOptions.pcm) {
+				channels = params.getAid().getNumberOfChannels();
+			} else {
+				/**
+				 * Note: MEncoder will output 2 audio channels if the input video had 2 channels
+				 * regardless of us telling it to output 6 (unlike FFmpeg which will output 6).
+				 */
+				channels = configuration.getAudioChannelCount(); // 5.1 max for AC-3 encoding
+			}
+			if (!combinedCustomOptions.contains("-channels")) {
+				channelsString = "-channels " + channels;
+			}
+		}
 		StringTokenizer st = new StringTokenizer(
 			channelsString +
 			(StringUtils.isNotBlank(globalMencoderOptions) ? " " + globalMencoderOptions : "") +
@@ -825,7 +827,7 @@ public class MEncoderVideo extends Engine {
 						acodec += "wmav2";
 					} else {
 						acodec = cbrSettings + acodec;
-						if (renderer.isTranscodeToAAC()) {
+						if (encodingFormat.isTranscodeToAAC()) {
 							acodec += "libfaac";
 						} else if (configuration.isMencoderAc3Fixed()) {
 							acodec += "ac3_fixed";
@@ -872,7 +874,7 @@ public class MEncoderVideo extends Engine {
 				audioType = "dts";
 			} else if (encodeOptions.pcm || encodeOptions.encodedAudioPassthrough) {
 				audioType = "pcm";
-			} else if (renderer.isTranscodeToAAC()) {
+			} else if (encodingFormat.isTranscodeToAAC()) {
 				audioType = "aac";
 			}
 
@@ -940,7 +942,7 @@ public class MEncoderVideo extends Engine {
 					":threads=" + (encodeOptions.wmv && !renderer.isXbox360() ? 1 : configuration.getMencoderMaxThreads()) +
 					("".equals(mpeg2Options) ? "" : ":" + mpeg2Options);
 
-				encodeSettings = addMaximumBitrateConstraints(encodeOptions, encodeSettings, media, mpeg2Options, renderer, audioType);
+				encodeSettings = addMaximumBitrateConstraints(encodeOptions, encodeSettings, media, mpeg2Options, renderer, audioType, encodingFormat);
 			} else if (configuration.getx264ConstantRateFactor() != null && encodeOptions.isTranscodeToH264) {
 				// Set H.264 video quality
 				String x264CRF = configuration.getx264ConstantRateFactor();
@@ -967,7 +969,7 @@ public class MEncoderVideo extends Engine {
 						x264CRF = "16";
 
 						// Lower quality for 720p+ content
-						if (defaultVideoTrack.getWidth() > 720) {
+						if (defaultVideoTrack.getWidth() > 720 && !encodingFormat.isTranscodeToH265()) {
 							x264CRF = "19";
 						}
 					}
@@ -978,7 +980,7 @@ public class MEncoderVideo extends Engine {
 
 				encodeSettings += " -x264encopts crf=" + x264CRF + ":preset=superfast:level=31:threads=auto";
 
-				encodeSettings = addMaximumBitrateConstraints(encodeOptions, encodeSettings, media, "", renderer, audioType);
+				encodeSettings = addMaximumBitrateConstraints(encodeOptions, encodeSettings, media, "", renderer, audioType, encodingFormat);
 			}
 
 			st = new StringTokenizer(encodeSettings, " ");
@@ -1286,16 +1288,16 @@ public class MEncoderVideo extends Engine {
 					cmdList.add("" + params.getSid().getLang());
 				} else if (
 					!renderer.streamSubsForTranscodedVideo() ||
-					!renderer.isExternalSubtitlesFormatSupported(params.getSid(), resource)
+					!renderer.isExternalSubtitlesFormatSupported(params.getSid(), item)
 				) {
 					// Only transcode subtitles if they aren't streamable
 					cmdList.add("-sub");
-					MediaSubtitle convertedSubs = resource.getMediaSubtitle();
+					MediaSubtitle convertedSubs = item.getMediaSubtitle();
 					if (defaultVideoTrack.is3d()) {
 						if (convertedSubs != null && convertedSubs.getConvertedFile() != null) { // subs are already converted to 3D so use them
 							cmdList.add(convertedSubs.getConvertedFile().getAbsolutePath().replace(",", "\\,"));
 						} else if (params.getSid().getType() != SubtitleType.ASS) { // When subs are not converted and they are not in the ASS format and video is 3D then subs need conversion to 3D
-							File subsFilename = SubtitleUtils.getSubtitles(resource, media, params, configuration, SubtitleType.ASS);
+							File subsFilename = SubtitleUtils.getSubtitles(item, media, params, configuration, SubtitleType.ASS);
 							cmdList.add(subsFilename.getAbsolutePath().replace(",", "\\,"));
 						}
 					} else {
@@ -1550,7 +1552,7 @@ public class MEncoderVideo extends Engine {
 			String vfValuePrepend = "expand=";
 
 			if (renderer.isKeepAspectRatio() || renderer.isKeepAspectRatioTranscoding()) {
-				String resolution = resource.getResolutionForKeepAR(scaleWidth, scaleHeight);
+				String resolution = item.getResolutionForKeepAR(scaleWidth, scaleHeight);
 				scaleWidth = Integer.parseInt(StringUtils.substringBefore(resolution, "x"));
 				scaleHeight = Integer.parseInt(StringUtils.substringAfter(resolution, "x"));
 
@@ -1623,7 +1625,7 @@ public class MEncoderVideo extends Engine {
 			// pass 1: process expertOptions
 			for (int l = 0; l < expertOptions.length; ++l) {
 				switch (expertOptions[l]) {
-					case "-noass":
+					case "-noass" -> {
 						// remove -ass from cmdList in pass 2.
 						// -ass won't have been added in this method (getSpecificCodecOptions
 						// has been called multiple times above to check for -noass and -nomux)
@@ -1633,55 +1635,56 @@ public class MEncoderVideo extends Engine {
 						removeCmdListOption.put("-ass", false); // false: option does not have a corresponding value
 						// remove -noass from expertOptions in pass 3
 						expertOptions[l] = REMOVE_OPTION;
-						break;
-					case "-nomux":
+					}
+					case "-nomux" -> {
 						expertOptions[l] = REMOVE_OPTION;
-						break;
-					case "-mt":
+					}
+					case "-mt" -> {
 						// not an MEncoder option so remove it from exportOptions.
 						// multi-threaded MEncoder is used by default, so this is obsolete (TODO: Remove it from the description)
 						expertOptions[l] = REMOVE_OPTION;
-						break;
-					case "-ofps":
+					}
+					case "-ofps" -> {
 						// replace the cmdList version with the expertOptions version i.e. remove the former
 						removeCmdListOption.put("-ofps", true);
 						// skip (i.e. leave unchanged) the exportOptions value
 						++l;
-						break;
-					case "-fps":
+					}
+					case "-fps" -> {
 						removeCmdListOption.put("-fps", true);
 						++l;
-						break;
-					case "-ovc":
+					}
+					case "-ovc" -> {
 						removeCmdListOption.put("-ovc", true);
 						++l;
-						break;
-					case "-channels":
+					}
+					case "-channels" -> {
 						removeCmdListOption.put("-channels", true);
 						++l;
-						break;
-					case "-oac":
+					}
+					case "-oac" -> {
 						removeCmdListOption.put("-oac", true);
 						++l;
-						break;
-					case "-quality":
+					}
+					case "-quality" -> {
 						// XXX like the old (cmdArray) code, this clobbers the old -lavcopts value
 						String lavcopts = String.format(
-							"autoaspect=1:vcodec=%s:acodec=%s:abitrate=%s:threads=%d:%s",
-							vcodec,
-							(configuration.isMencoderAc3Fixed() ? "ac3_fixed" : "ac3"),
-							CodecUtil.getAC3Bitrate(configuration, params.getAid()),
-							configuration.getMencoderMaxThreads(),
-							expertOptions[l + 1]
+								"autoaspect=1:vcodec=%s:acodec=%s:abitrate=%s:threads=%d:%s",
+								vcodec,
+								(configuration.isMencoderAc3Fixed() ? "ac3_fixed" : "ac3"),
+								CodecUtil.getAC3Bitrate(configuration, params.getAid()),
+								configuration.getMencoderMaxThreads(),
+								expertOptions[l + 1]
 						);
 
 						// append bitrate-limiting options if configured
 						lavcopts = addMaximumBitrateConstraints(encodeOptions,
-							lavcopts,
-							media,
-							lavcopts,
-							renderer,
-							""
+								lavcopts,
+								media,
+								lavcopts,
+								renderer,
+								"",
+								encodingFormat
 						);
 
 						// a string format with no placeholders, so the cmdList option value is ignored.
@@ -1692,31 +1695,32 @@ public class MEncoderVideo extends Engine {
 						expertOptions[l] = REMOVE_OPTION;
 						expertOptions[l + 1] = REMOVE_OPTION;
 						++l;
-						break;
-					case "-mpegopts":
+					}
+					case "-mpegopts" -> {
 						mergeCmdListOption.put("-mpegopts", "%s:" + expertOptions[l + 1].replace("%", "%%"));
 						// merge if cmdList already contains -mpegopts, but don't append if it doesn't (parity with the old (cmdArray) version)
 						expertOptions[l] = REMOVE_OPTION;
 						expertOptions[l + 1] = REMOVE_OPTION;
 						++l;
-						break;
-					case "-vf":
+					}
+					case "-vf" -> {
 						mergeCmdListOption.put("-vf", "%s," + expertOptions[l + 1].replace("%", "%%"));
 						++l;
-						break;
-					case "-af":
+					}
+					case "-af" -> {
 						mergeCmdListOption.put("-af", "%s," + expertOptions[l + 1].replace("%", "%%"));
 						++l;
-						break;
-					case "-nosync":
+					}
+					case "-nosync" -> {
 						disableMc0AndNoskip = true;
 						expertOptions[l] = REMOVE_OPTION;
-						break;
-					case "-mc":
+					}
+					case "-mc" -> {
 						disableMc0AndNoskip = true;
-						break;
-					default:
-						break;
+					}
+					default -> {
+						//nothing to do
+					}
 				}
 			}
 
@@ -2082,7 +2086,7 @@ public class MEncoderVideo extends Engine {
 	}
 
 	@Override
-	public String mimeType() {
+	public String getMimeType() {
 		return HTTPResource.VIDEO_TRANSCODE;
 	}
 
@@ -2239,23 +2243,23 @@ public class MEncoderVideo extends Engine {
 	}
 
 	@Override
-	public boolean isCompatible(StoreItem resource) {
+	public boolean isCompatible(StoreItem item) {
 		return (
-			PlayerUtil.isVideo(resource, Format.Identifier.ISOVOB) ||
-			PlayerUtil.isVideo(resource, Format.Identifier.MKV) ||
-			PlayerUtil.isVideo(resource, Format.Identifier.MPG) ||
-			PlayerUtil.isVideo(resource, Format.Identifier.OGG)
+			PlayerUtil.isVideo(item, Format.Identifier.ISOVOB) ||
+			PlayerUtil.isVideo(item, Format.Identifier.MKV) ||
+			PlayerUtil.isVideo(item, Format.Identifier.MPG) ||
+			PlayerUtil.isVideo(item, Format.Identifier.OGG)
 		);
+	}
+
+	@Override
+	public boolean isCompatible(EncodingFormat encodingFormat) {
+		return encodingFormat.isVideoFormat() && !encodingFormat.isTranscodeToHLS();
 	}
 
 	@Override
 	public boolean excludeFormat(Format extension) {
 		return false;
-	}
-
-	@Override
-	public boolean isEngineCompatible(Renderer renderer) {
-		return true;
 	}
 
 	@Override

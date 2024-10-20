@@ -33,7 +33,9 @@ import net.pms.configuration.UmsConfiguration;
 import net.pms.media.MediaInfo;
 import net.pms.media.audio.MediaAudio;
 import net.pms.media.chapter.MediaChapter;
+import net.pms.media.codec.video.H264;
 import net.pms.media.subtitle.MediaSubtitle;
+import net.pms.media.video.MediaVideo;
 import net.pms.renderers.Renderer;
 import net.pms.store.StoreItem;
 import net.pms.util.Range;
@@ -120,13 +122,14 @@ public class HlsHelper {
 	    You must use at least protocol version 8 if you use variable substitution.
 	*/
 
-	public static String getHLSm3u8(StoreItem resource, Renderer renderer, String baseUrl) {
-		if (resource.getMediaInfo() != null) {
+	public static String getHLSm3u8(StoreItem item, Renderer renderer, String baseUrl) {
+		if (item.getMediaInfo() != null) {
+			final EncodingFormat encodingFormat = item.getTranscodingSettings().getEncodingFormat();
 			int hlsVersion = renderer.getHlsVersion();
-			MediaInfo mediaVideo = resource.getMediaInfo();
+			MediaInfo mediaInfo = item.getMediaInfo();
 			// add 5% to handle cropped borders
-			int maxHeight = (int) (mediaVideo.getHeight() * 1.05);
-			String id = resource.getResourceId();
+			int maxHeight = (int) (mediaInfo.getHeight() * 1.05);
+			String id = item.getResourceId();
 			StringBuilder sb = new StringBuilder();
 			sb.append("#EXTM3U\n");
 			if (hlsVersion > 1) {
@@ -135,13 +138,13 @@ public class HlsHelper {
 			//add audio languages
 			List<HlsAudioConfiguration> audioGroups = new ArrayList<>();
 			MediaAudio mediaAudioDefault = null;
-			if (!mediaVideo.getAudioTracks().isEmpty()) {
+			if (!mediaInfo.getAudioTracks().isEmpty()) {
 				//try to find the preferred language
 				mediaAudioDefault = null;
 				StringTokenizer st = new StringTokenizer(CONFIGURATION.getAudioLanguages(), ",");
 				while (st.hasMoreTokens() && mediaAudioDefault == null) {
 					String lang = st.nextToken().trim();
-					for (MediaAudio mediaAudio : mediaVideo.getAudioTracks()) {
+					for (MediaAudio mediaAudio : mediaInfo.getAudioTracks()) {
 						if (mediaAudio.matchCode(lang)) {
 							mediaAudioDefault = mediaAudio;
 							break;
@@ -156,14 +159,14 @@ public class HlsHelper {
 					}
 				}
 			}
-			HlsAudioConfiguration askedDefaultAudioGroup = renderer.isTranscodeToAAC() ? HlsAudioConfiguration.getByKey("AAC-LC") : HlsAudioConfiguration.getByKey("AC3");
+			HlsAudioConfiguration askedDefaultAudioGroup = encodingFormat.isTranscodeToAAC() ? HlsAudioConfiguration.getByKey("AAC-LC") : HlsAudioConfiguration.getByKey("AC3");
 			if (!audioGroups.contains(askedDefaultAudioGroup)) {
 				audioGroups.add(askedDefaultAudioGroup);
 			}
 			Map<String, Integer> audioNames = new HashMap<>();
 			for (HlsAudioConfiguration audioGroup : audioGroups) {
 				String groupId = audioGroup.label;
-				for (MediaAudio mediaAudio : mediaVideo.getAudioTracks()) {
+				for (MediaAudio mediaAudio : mediaInfo.getAudioTracks()) {
 					sb.append("#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"").append(groupId).append("\",LANGUAGE=\"");
 					sb.append(mediaAudio.getLang()).append("\",NAME=\"");
 					String audioName = mediaAudio.getLangFullName();
@@ -191,7 +194,7 @@ public class HlsHelper {
 				}
 			}
 			boolean subtitleAdded = false;
-			for (MediaSubtitle mediaSubtitle : mediaVideo.getSubtitlesTracks()) {
+			for (MediaSubtitle mediaSubtitle : mediaInfo.getSubtitlesTracks()) {
 				if (mediaSubtitle.isEmbedded() && mediaSubtitle.getType().isText()) {
 					subtitleAdded = true;
 					sb.append("#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=\"sub1\",CHARACTERISTICS=\"public.accessibility.transcribes-spoken-dialog\",AUTOSELECT=YES");
@@ -216,7 +219,7 @@ public class HlsHelper {
 				}
 			}
 			//adding chapters
-			if (mediaVideo.hasChapters()) {
+			if (mediaInfo.hasChapters()) {
 				sb.append("#EXT-X-SESSION-DATA:DATA-ID=\"com.apple.hls.chapters\",URI=\"").append(baseUrl).append(id).append("/hls/chapters.json\"\n");
 			}
 			//adding video
@@ -227,8 +230,8 @@ public class HlsHelper {
 				//always add basic LD conf and other conf that match
 				for (HlsVideoConfiguration videoConf : HlsVideoConfiguration.getValues()) {
 					if (videoConf.isTranscodable && !videoGroups.contains(videoConf) &&
-						(mediaVideo.getHeight() != videoConf.resolutionHeight && mediaVideo.getWidth() != videoConf.resolutionWidth) &&
-						((maxHeight >= videoConf.resolutionHeight && mediaVideo.getWidth() >= videoConf.resolutionWidth) || "LD".equals(videoConf.label))
+						(mediaInfo.getHeight() != videoConf.resolutionHeight && mediaInfo.getWidth() != videoConf.resolutionWidth) &&
+						((maxHeight >= videoConf.resolutionHeight && mediaInfo.getWidth() >= videoConf.resolutionWidth) || "LD".equals(videoConf.label))
 					) {
 						videoGroups.add(videoConf);
 					}
@@ -238,10 +241,12 @@ public class HlsHelper {
 				for (HlsAudioConfiguration audioGroup : audioGroups) {
 					sb.append("#EXT-X-STREAM-INF:BANDWIDTH=");
 					if (videoGroup.label.equals(COPY_CONF_NAME)) {
-						sb.append(mediaVideo.getBitRate());
-						sb.append(",RESOLUTION=").append(mediaVideo.getWidth()).append("x").append(mediaVideo.getHeight());
+						sb.append(mediaInfo.getBitRate());
+						sb.append(",RESOLUTION=").append(mediaInfo.getWidth()).append("x").append(mediaInfo.getHeight());
 						sb.append(",AUDIO=\"").append(audioGroup.label).append("\"");
-						sb.append(",CODECS=\"").append("avc1.64001e");
+						sb.append(",CODECS=\"").append("avc1.");
+						sb.append(getAvcProfileHex(mediaInfo));
+						sb.append(getAvcLevelHex(mediaInfo));
 					} else {
 						sb.append(videoGroup.bandwidth);
 						sb.append(",RESOLUTION=").append(videoGroup.resolutionWidth).append("x").append(videoGroup.resolutionHeight);
@@ -385,27 +390,44 @@ public class HlsHelper {
 		return null;
 	}
 
-	public static int getAvcProfileId(String profile) {
-		if (profile == null) {
-			return 255;
+	public static String getAvcLevelHex(MediaInfo mediaInfo) {
+		if (mediaInfo != null && mediaInfo.hasVideoTrack()) {
+			MediaVideo mediaVideo = mediaInfo.getDefaultVideoTrack();
+			if (mediaVideo.isH264() && mediaVideo.getFormatLevel() != null) {
+				return H264.getAvcLevelHex(mediaVideo.getFormatLevelAsDouble(4.1));
+			}
+			int width = mediaVideo.getWidth();
+			int height = mediaVideo.getHeight();
+			if (width > 3840 || height > 2160) {
+				return "3D"; //6.1
+			} else if (width > 1920 || height > 1080) {
+				return "34"; //5.2
+			} else if (width > 842 || height > 480) {
+				return "2A"; //4.2
+			} else if (width > 640 || height > 360) {
+				return "29"; //4.1
+			}
+			return "1E"; //3.0
 		}
-		return switch (profile) {
-			case "CAVLC 4:4:4 Intra" -> 44;
-			case "Baseline" -> 66;
-			case "Main" -> 77;
-			case "Scalable Baseline" -> 83;
-			case "Scalable High" -> 86;
-			case "Extended" -> 88;
-			case "High" -> 100;
-			case "High 10" -> 110;
-			case "Multiview High" -> 118;
-			case "High 4:2:2" -> 122;
-			case "Stereo High" -> 128;
-			case "Multiview Depth High" -> 138;
-			case "High 4:4:4" -> 144;
-			case "High 4:4:4 Predictive" -> 244;
-			default -> 255;
-		};
+		return "29"; //4.1
+	}
+
+	public static String getAvcProfileHex(MediaInfo mediaInfo) {
+		if (mediaInfo != null && mediaInfo.hasVideoTrack()) {
+			MediaVideo mediaVideo = mediaInfo.getDefaultVideoTrack();
+			if (mediaVideo.isH264() && mediaVideo.getFormatProfile() != null) {
+				String profileHex = H264.getAvcProfileHex(mediaVideo.getFormatProfile());
+				if (profileHex != null) {
+					return profileHex;
+				}
+			}
+			int width = mediaVideo.getWidth();
+			int height = mediaVideo.getHeight();
+			if (width > 640 || height > 360) {
+				return "6400"; //High
+			}
+		}
+		return "4D00"; //Main
 	}
 
 	/**
@@ -485,7 +507,7 @@ public class HlsHelper {
 
 	/*
 	 * video :
-	 * avc1.XXXXYY			-> h264			XXXX -> profile (42001 = main, 4D40 = main, 6400 = high) and YY -> hex of level
+	 * avc1.XXXXYY			-> h264			XXXX -> profile (4200 = baseline, 4D40 = main, 6400 = high) and YY -> hex of level
 	 * profiles hex :
 	 * 4200 -> Baseline
 	 * 4240 -> Constrained Baseline
@@ -497,20 +519,27 @@ public class HlsHelper {
 	 * 6E00 -> High 10
 	 * 6E10 -> High 10 Intra
 	 * 7A00 -> High 4:2:2
+	 * level hex :
+	 * 1E -> 3.0
+	 * 29 -> 4.1
+	 * 2A -> 4.2
+	 * 33 -> 5.1
+	 * 34 -> 5.2
+	 * 3D -> 6.1
 	 */
 	public static class HlsVideoConfiguration {
 		private static final Map<String, HlsVideoConfiguration> BY_LABEL = new LinkedHashMap<>();
 		static {
 			BY_LABEL.put(NONE_CONF_NAME, new HlsVideoConfiguration(NONE_CONF_NAME, "", -1, 0, 0, "", 0, false));
-			BY_LABEL.put(COPY_CONF_NAME, new HlsVideoConfiguration(COPY_CONF_NAME, "", 0, 0, 0, "avc1.64001e", 0, false));
-			BY_LABEL.put("UHD2", new HlsVideoConfiguration("UHD2", "Ultra High Definition 8K", 7680, 4320, 72000000, "avc1.64001e", 64000000, true));
-			BY_LABEL.put("UHD1", new HlsVideoConfiguration("UHD1", "Ultra High Definition 4K", 3840, 2160, 18000000, "avc1.64001e", 16000000, true));
-			BY_LABEL.put("QHD", new HlsVideoConfiguration("QHD", "Quad High Definition", 2560, 1440, 8000000, "avc1.64001e", 9600000, true));
-			BY_LABEL.put("FHD", new HlsVideoConfiguration("FHD", "Full High Definition", 1920, 1080, 5000000, "avc1.64001e", 4800000, true));
-			BY_LABEL.put("HD", new HlsVideoConfiguration("HD", "High Definition", 1280, 720, 2800000, "avc1.64001e", 2400000, true));
-			BY_LABEL.put("SD", new HlsVideoConfiguration("SD", "Standard Definition", 842, 480, 1400000, "avc1.64001e", 1200000, true));
-			BY_LABEL.put("LD", new HlsVideoConfiguration("LD", "Low Definition", 640, 360, 800000, "avc1.4D401e", 600000, true));
-			BY_LABEL.put("ULD", new HlsVideoConfiguration("ULD", "Ultra-Low Definition", 426, 240, 350000, "avc1.4D401e", 350000, true));
+			BY_LABEL.put(COPY_CONF_NAME, new HlsVideoConfiguration(COPY_CONF_NAME, "", 0, 0, 0, "avc1.640029", 0, false));
+			BY_LABEL.put("UHD2", new HlsVideoConfiguration("UHD2", "Ultra High Definition 8K", 7680, 4320, 72000000, "avc1.64003D", 64000000, true));
+			BY_LABEL.put("UHD1", new HlsVideoConfiguration("UHD1", "Ultra High Definition 4K", 3840, 2160, 18000000, "avc1.640034", 16000000, true));
+			BY_LABEL.put("QHD", new HlsVideoConfiguration("QHD", "Quad High Definition", 2560, 1440, 8000000, "avc1.640033", 9600000, true));
+			BY_LABEL.put("FHD", new HlsVideoConfiguration("FHD", "Full High Definition", 1920, 1080, 5000000, "avc1.64002A", 4800000, true));
+			BY_LABEL.put("HD", new HlsVideoConfiguration("HD", "High Definition", 1280, 720, 2800000, "avc1.64002A", 2400000, true));
+			BY_LABEL.put("SD", new HlsVideoConfiguration("SD", "Standard Definition", 842, 480, 1400000, "avc1.640029", 1200000, true));
+			BY_LABEL.put("LD", new HlsVideoConfiguration("LD", "Low Definition", 640, 360, 800000, "avc1.4D401E", 600000, true));
+			BY_LABEL.put("ULD", new HlsVideoConfiguration("ULD", "Ultra-Low Definition", 426, 240, 350000, "avc1.4D401E", 350000, true));
 		}
 		public final String label;
 		public final String description;

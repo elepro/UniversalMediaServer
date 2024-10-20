@@ -88,7 +88,7 @@ public class VirtualFolderDbId extends LocalizedStoreContainer {
 	}
 
 	@Override
-	public void doRefreshChildren() {
+	public synchronized void doRefreshChildren() {
 		Connection connection = null;
 		try {
 			connection = MediaDatabase.getConnectionIfAvailable();
@@ -151,7 +151,7 @@ public class VirtualFolderDbId extends LocalizedStoreContainer {
 									while (resultSet.next()) {
 										// Find "best track" logic should be
 										// optimized !!
-										name = resultSet.getString(MediaTableAudioMetadata.TABLE_COL_ALBUM);
+										setName(resultSet.getString(MediaTableAudioMetadata.TABLE_COL_ALBUM));
 										String currentUuidTrack = resultSet.getString("MBID_TRACK");
 										if (!currentUuidTrack.equals(lastUuidTrack)) {
 											lastUuidTrack = currentUuidTrack;
@@ -266,7 +266,11 @@ public class VirtualFolderDbId extends LocalizedStoreContainer {
 						for (File file : filesListFromDb) {
 							if (renderer.hasShareAccess(file)) {
 								StoreResource sr = renderer.getMediaStore().createResourceFromFile(file);
-								addChild(sr);
+								if (sr != null) {
+									addChild(sr);
+								} else {
+									LOGGER.trace("createResourceFromFile has failed for {}", file);
+								}
 							} else {
 								LOGGER.debug("renderer has no share access to resource {}", file.getAbsolutePath());
 							}
@@ -281,6 +285,7 @@ public class VirtualFolderDbId extends LocalizedStoreContainer {
 		} finally {
 			MediaDatabase.close(connection);
 		}
+		sortChildrenIfNeeded();
 	}
 
 	private MusicBrainzAlbum generateMusicBrainzAlbum(ResultSet resultSet) throws SQLException {

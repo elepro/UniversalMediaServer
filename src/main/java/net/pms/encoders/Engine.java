@@ -38,7 +38,7 @@ import net.pms.io.OutputParams;
 import net.pms.io.ProcessWrapper;
 import net.pms.media.MediaInfo;
 import net.pms.media.MediaLang;
-import net.pms.media.subtitle.MediaOnDemandSubtitle;
+import net.pms.media.codec.video.H264;
 import net.pms.media.video.MediaVideo;
 import net.pms.renderers.Renderer;
 import net.pms.store.StoreItem;
@@ -59,6 +59,7 @@ import org.slf4j.LoggerFactory;
  */
 @ThreadSafe
 public abstract class Engine {
+
 	private static final Logger LOGGER = LoggerFactory.getLogger(Engine.class);
 	protected static final UmsConfiguration CONFIGURATION = PMS.getConfiguration();
 
@@ -130,7 +131,7 @@ public abstract class Engine {
 
 	public abstract int type();
 
-	public abstract String mimeType();
+	public abstract String getMimeType();
 
 	/**
 	 * Must be used to control all access to {@link #available}
@@ -138,8 +139,6 @@ public abstract class Engine {
 	public abstract String getExecutableTypeKey();
 
 	public abstract boolean excludeFormat(Format extension);
-
-	public abstract boolean isEngineCompatible(Renderer renderer);
 
 	public abstract ProcessWrapper launchTranscode(
 		StoreItem resource,
@@ -149,14 +148,27 @@ public abstract class Engine {
 
 	/**
 	 * Returns whether or not this {@link Engine} can handle a given
-	 * {@link StoreItem}. If {@code resource} is {@code null} {@code false}
-	 * will be returned.
+	 * {@link StoreItem}.
 	 *
-	 * @param resource the {@link StoreItem} to be matched.
-	 * @return {@code true} if {@code resource} can be handled, {@code false}
-	 *         otherwise.
+	 * If {@code item} is {@code null}, {@code false} will be returned.
+	 *
+	 * @param item the {@link StoreItem} to be matched.
+	 * @return {@code true} if {@code item} can be handled, {@code false}
+	 * otherwise.
 	 */
-	public abstract boolean isCompatible(StoreItem resource);
+	public abstract boolean isCompatible(StoreItem item);
+
+	/**
+	 * Returns whether or not this {@link Engine} can handle a given
+	 * {@link EncodingFormat}.
+	 *
+	 * If {@code encodingFormat} is {@code null}, {@code false} will be returned.
+	 *
+	 * @param encodingFormat the {@link EncodingFormat} to be matched.
+	 * @return {@code true} if {@code item} can be handled, {@code false}
+	 * otherwise.
+	 */
+	public abstract boolean isCompatible(EncodingFormat encodingFormat);
 
 	protected abstract boolean isSpecificTest();
 
@@ -976,16 +988,6 @@ public abstract class Engine {
 		if (params.getSid() != null && params.getSid().getId() == MediaLang.DUMMY_ID) {
 			LOGGER.trace("Don't want subtitles!");
 			params.setSid(null);
-		} else if (params.getSid() instanceof MediaOnDemandSubtitle dLNAMediaOnDemandSubtitle) {
-			// Download/fetch live subtitles
-			if (params.getSid().getExternalFile() == null) {
-				if (!dLNAMediaOnDemandSubtitle.fetch()) {
-					LOGGER.error("Failed to fetch on-demand subtitles \"{}\"", params.getSid().getName());
-				}
-				if (params.getSid().getExternalFile() == null) {
-					params.setSid(null);
-				}
-			}
 		} else if (params.getSid() == null) {
 			params.setSid(resource.resolveSubtitlesStream(params.getAid() == null ? null : params.getAid().getLang(), true));
 		}
@@ -1126,69 +1128,44 @@ public abstract class Engine {
 		);
 	}
 
-
 	/**
-	 * Checks whether the video has too many reference frames per pixels for the renderer.
+	 * Checks whether the video has too many reference frames per pixels for the level.
 	 *
-	 * TODO move to PlayerUtil
-	 * @param f
+	 * @param video
 	 * @param renderer
 	 * @return
 	 */
 	public boolean isVideoWithinH264LevelLimits(MediaVideo video, Renderer renderer) {
 		if (video != null && video.isH264()) {
 			byte referenceFrameCount = video.getReferenceFrameCount();
-			String formatLevel = video.getFormatLevel();
 			int width = video.getWidth();
 			int height = video.getHeight();
-			if (
-				referenceFrameCount > -1 &&
-				(
-					"4.1".equals(formatLevel) ||
-					"4.2".equals(formatLevel) ||
-					"5".equals(formatLevel) ||
-					"5.0".equals(formatLevel) ||
-					"5.1".equals(formatLevel) ||
-					"5.2".equals(formatLevel)
-				) &&
-				width > 0 &&
-				height > 0
-			) {
-				int maxref;
-				if (renderer == null || renderer.isPS3()) {
-					/**
-					 * 2013-01-25: Confirmed maximum reference frames on PS3:
-					 *    - 4 for 1920x1080
-					 *    - 11 for 1280x720
-					 * Meaning this math is correct
-					 */
-					maxref = (int) Math.floor(10252743 / (double) (width * height));
-				} else {
-					/**
-					 * This is the math for level 4.1, which results in:
-					 *    - 4 for 1920x1080
-					 *    - 9 for 1280x720
-					 */
-					maxref = (int) Math.floor(8388608 / (double) (width * height));
-				}
-
-				if (referenceFrameCount > maxref) {
-					LOGGER.debug(
-						"The video is not compatible with this renderer because it " +
-						"can only take {} reference frames at this resolution while this " +
-						"video has {} reference frames",
-						maxref, referenceFrameCount
-					);
-					return false;
-				} else if (referenceFrameCount == -1) {
-					LOGGER.debug(
-						"The video may not be compatible with this renderer because " +
-						"we can't get its number of reference frames"
-					);
-					return false;
-				}
-				return true;
+			if (referenceFrameCount == -1 || width < 1 || height < 1) {
+				LOGGER.debug(
+					"The video may not be compatible with this renderer because " +
+					"we can't get its number of reference frames"
+				);
+				return false;
 			}
+			double videoLevel = video.getFormatLevelAsDouble(0);
+			if (videoLevel == 0) {
+				return false;
+			}
+			double limitLevel = renderer.getH264LevelLimit();
+			if (videoLevel > limitLevel) {
+				LOGGER.debug("The H.264 level ({}) is not supported by the renderer (limit: {}).", videoLevel, limitLevel);
+				return false;
+			}
+			int maximumStoredFrames = H264.getMaximumStoredFrames(limitLevel, width, height);
+			if (referenceFrameCount > maximumStoredFrames) {
+				LOGGER.debug(
+					"The video is not compatible with this renderer because it " +
+					"can only take {} reference frames at this resolution while this " +
+					"video has {} reference frames",
+					maximumStoredFrames, referenceFrameCount
+				);
+			}
+			return true;
 		}
 		return false;
 	}

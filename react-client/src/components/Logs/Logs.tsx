@@ -267,8 +267,10 @@ const Logs = () => {
         const thread = tmplines[i].substring(31, tmplines[i].indexOf(']')).replace(/[\d|-]+$/, '');
         if (!threads.includes(thread)) { threads.push(thread) }
         lines.push(tmplines[i]);
+      } else if (lines.length === 0) {
+        lines.push(tmplines[i]);
       } else {
-        (lines.length === 0) ? lines.push(tmplines[i]) : lines[lines.length - 1] = lines[lines.length - 1].concat('\r', tmplines[i]);
+        lines[lines.length - 1] = lines[lines.length - 1].concat('\r', tmplines[i]);
       }
     }
     setLogThreads(threads);
@@ -383,7 +385,7 @@ const Logs = () => {
           onClose={() => { setRestartOpened(false); setRestartOpened(false) }}
           title={i18n.get('StartupLogLevelNotTrace')}
         >
-          <span dangerouslySetInnerHTML={{ __html: i18n.get('ForReportingMostIssuesBest')}}></span>
+          <span dangerouslySetInnerHTML={{ __html: i18n.get('ForReportingMostIssuesBest') }}></span>
           <Group>
             <Button onClick={() => { sendAction('Process.Reboot.Trace'); setRestartOpened(false); setSettingsOpened(false) }}>{i18n.get('Yes')}</Button>
             <Button onClick={() => { setRestartOpened(false) }}>{i18n.get('No')}</Button>

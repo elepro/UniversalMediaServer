@@ -62,6 +62,7 @@ import net.pms.service.Services;
 import net.pms.service.sleep.PreventSleepMode;
 import net.pms.service.sleep.SleepManager;
 import net.pms.store.container.CodeEnter;
+import net.pms.store.utils.StoreResourceSorter;
 import net.pms.util.CoverSupplier;
 import net.pms.util.ExternalProgramInfo;
 import net.pms.util.FilePermissions;
@@ -391,7 +392,6 @@ public class UmsConfiguration extends BaseConfiguration {
 	private static final String KEY_SEARCH_RECURSE = "search_recurse"; // legacy option
 	private static final String KEY_SEARCH_RECURSE_DEPTH = "search_recurse_depth";
 	private static final String KEY_SELECTED_RENDERERS = "selected_renderers";
-	private static final String KEY_SERVER_ENGINE = "server_engine";
 	private static final String KEY_SERVER_HOSTNAME = "hostname";
 	private static final String KEY_SERVER_NAME = "server_name";
 	private static final String KEY_SERVER_PORT = "port";
@@ -517,7 +517,8 @@ public class UmsConfiguration extends BaseConfiguration {
 		"bump.skin",				//old player
 		"min_playtime_web",			//old player
 		"bump",						//old player
-		"shares"					//not used
+		"shares",					//not used
+		"server_engine"				//no more multiple engines
 	);
 
 	/**
@@ -527,7 +528,6 @@ public class UmsConfiguration extends BaseConfiguration {
 	public static final Set<String> NEED_MEDIA_SERVER_RELOAD_FLAGS = Set.of(
 		KEY_CHROMECAST_EXT,
 		KEY_NETWORK_INTERFACE,
-		KEY_SERVER_ENGINE,
 		KEY_SERVER_HOSTNAME,
 		KEY_SERVER_PORT,
 		KEY_UPNP_ENABLED
@@ -1582,18 +1582,6 @@ public class UmsConfiguration extends BaseConfiguration {
 	}
 
 	/**
-	 * Get the MediaServer Engine version.
-	 * @return the MediaServer engine version selected, or 0 for default.
-	 */
-	public int getServerEngine() {
-		return getInt(KEY_SERVER_ENGINE, 0);
-	}
-
-	public void setServerEngine(int value) {
-		configuration.setProperty(KEY_SERVER_ENGINE, value);
-	}
-
-	/**
 	 * The server port where UMS listens for TCP/IP traffic. Default value is 5001.
 	 * @return The port number.
 	 */
@@ -1664,10 +1652,13 @@ public class UmsConfiguration extends BaseConfiguration {
 		if (lang == null) {
 			lang = getLanguageRawString();
 		}
-		if (lang != null) {
-			lang = lang.toLowerCase();
+		if (lang == null) {
+			lang = PMS.getLocale().toLanguageTag();
 		}
-		return lang;
+		if (lang != null) {
+			return lang.toLowerCase();
+		}
+		return "en-us";
 	}
 
 	/**
@@ -3658,16 +3649,20 @@ public class UmsConfiguration extends BaseConfiguration {
 	private boolean ignoredFolderNamesRead;
 
 	/**
+	 * List of system folder to always skip.
+	 */
+	private List<String> ignoredSystemFolderNames = List.of("$RECYCLE.BIN", "System Volume Information");
+
+	/**
 	 * @return The {@link List} of {@link Path}s of ignored folder names.
 	 */
 	@Nonnull
 	public List<String> getIgnoredFolderNames() {
 		if (!ignoredFolderNamesRead) {
-			String ignoredFolderNamesString = configuration.getString(KEY_FOLDER_NAMES_IGNORED, ".unwanted");
+			String ignoredFolderNamesString = configuration.getString(KEY_FOLDER_NAMES_IGNORED, ".unwanted,$RECYCLE.BIN,System Volume Information");
 
-			List<String> folders = new ArrayList<>();
 			if (ignoredFolderNamesString == null || ignoredFolderNamesString.length() == 0) {
-				return folders;
+				return ignoredSystemFolderNames;
 			}
 
 			String[] foldersArray = ignoredFolderNamesString.trim().split("\\s*,\\s*");
@@ -3683,6 +3678,7 @@ public class UmsConfiguration extends BaseConfiguration {
 				// add the path even if there are problems so that the user can update the shared folders as required.
 				ignoredFolderNames.add(folder);
 			}
+			ignoredFolderNames.addAll(ignoredSystemFolderNames);
 
 			ignoredFolderNamesRead = true;
 		}
@@ -3961,8 +3957,8 @@ public class UmsConfiguration extends BaseConfiguration {
 	public int getSortMethod(File path) {
 		int cnt = 0;
 		String raw = getString(KEY_SORT_PATHS, null);
-		if (StringUtils.isEmpty(raw)) {
-			return getInt(KEY_SORT_METHOD, UMSUtils.SORT_LOC_NAT);
+		if (StringUtils.isBlank(raw)) {
+			return getSortMethod();
 		}
 
 		if (Platform.isWindows()) {
@@ -3990,7 +3986,11 @@ public class UmsConfiguration extends BaseConfiguration {
 			path = path.getParentFile();
 		}
 
-		return getInt(KEY_SORT_METHOD, UMSUtils.SORT_LOC_NAT);
+		return getSortMethod();
+	}
+
+	public int getSortMethod() {
+		return getInt(KEY_SORT_METHOD, StoreResourceSorter.SORT_TITLE_ASC);
 	}
 
 	/**
@@ -5489,18 +5489,14 @@ public class UmsConfiguration extends BaseConfiguration {
 	 */
 	public static synchronized JsonArray getSortMethodsAsJsonArray() {
 		String[] values = new String[]{
-			"" + UMSUtils.SORT_LOC_SENS,  // alphabetical
-			"" + UMSUtils.SORT_LOC_NAT,   // natural sort
-			"" + UMSUtils.SORT_INS_ASCII, // ASCIIbetical
-			"" + UMSUtils.SORT_MOD_NEW,   // newest first
-			"" + UMSUtils.SORT_MOD_OLD,   // oldest first
-			"" + UMSUtils.SORT_RANDOM,    // random
-			"" + UMSUtils.SORT_NO_SORT    // no sorting
+			"" + StoreResourceSorter.SORT_TITLE_ASC,      // title asc
+			"" + StoreResourceSorter.SORT_DATE_MOD_DESC,  // newest first
+			"" + StoreResourceSorter.SORT_DATE_MOD_ASC,   // oldest first
+			"" + StoreResourceSorter.SORT_RANDOM,         // random
+			"" + StoreResourceSorter.SORT_NO_SORT         // no sorting
 		};
 		String[] labels = new String[]{
-			"i18n@AlphabeticalAZ",
-			"i18n@Alphanumeric",
-			"i18n@Asciibetical",
+			"i18n@ByDisplayName",
 			"i18n@ByDateNewestFirst",
 			"i18n@ByDateOldestFirst",
 			"i18n@Random",
@@ -5671,7 +5667,6 @@ public class UmsConfiguration extends BaseConfiguration {
 		JsonArray allRenderers = new JsonArray();
 		allRenderers.add(RendererConfigurations.ALL_RENDERERS_KEY);
 		jObj.add(KEY_SELECTED_RENDERERS, allRenderers);
-		jObj.addProperty(KEY_SERVER_ENGINE, "0");
 		jObj.addProperty(KEY_SERVER_NAME, "Universal Media Server");
 		jObj.addProperty(KEY_SHOW_LIVE_SUBTITLES_FOLDER, false);
 		jObj.addProperty(KEY_SHOW_MEDIA_LIBRARY_FOLDER, true);
@@ -5680,7 +5675,7 @@ public class UmsConfiguration extends BaseConfiguration {
 		jObj.addProperty(KEY_SHOW_SPLASH_SCREEN, true);
 		jObj.addProperty(KEY_SHOW_TRANSCODE_FOLDER, true);
 		jObj.addProperty(KEY_SHOW_USER_CHOICE, true);
-		jObj.addProperty(KEY_SORT_METHOD, "4");
+		jObj.addProperty(KEY_SORT_METHOD, "0");
 		jObj.addProperty(KEY_SUBS_INFO_LEVEL, "basic");
 		jObj.addProperty(KEY_SUBTITLES_CODEPAGE, "");
 		jObj.addProperty(KEY_SUBTITLES_LANGUAGES, Messages.getConfigurationString("SubtitlesLanguages"));

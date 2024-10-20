@@ -28,6 +28,7 @@ import net.pms.external.umsapi.APIUtils;
 import net.pms.media.MediaInfo;
 import net.pms.media.video.metadata.MediaVideoMetadata;
 import net.pms.media.video.metadata.VideoMetadataLocalized;
+import net.pms.store.MediaInfoStore;
 import net.pms.util.FileUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -60,7 +61,7 @@ public class MediaTableVideoMetadata extends MediaTable {
 	 *		set back 1 to 1 values to table (POSTER, RATED, RATING, RELEASEDATE)
 	 *		convert TVSEASON to INTEGER
 	 */
-	private static final int TABLE_VERSION = 7;
+	private static final int TABLE_VERSION = 8;
 
 	/**
 	 * COLUMNS NAMES
@@ -118,6 +119,8 @@ public class MediaTableVideoMetadata extends MediaTable {
 	public static final String TABLE_COL_TVSERIESID = TABLE_NAME + "." + COL_TVSERIESID;
 	public static final String TABLE_COL_TVEPISODENUMBER = TABLE_NAME + "." + COL_TVEPISODENUMBER;
 	public static final String TABLE_COL_TVSEASON = TABLE_NAME + "." + COL_TVSEASON;
+
+	public static final String TABLE_COL_FIRST_TVEPISODE = "CAST(REGEXP_SUBSTR(CONCAT('0', " + TABLE_COL_TVEPISODENUMBER + "), '\\d*') AS INTEGER)";
 
 	/**
 	 * SQL Jointures
@@ -309,6 +312,12 @@ public class MediaTableVideoMetadata extends MediaTable {
 					executeUpdate(connection, ALTER_TABLE + TABLE_NAME + ALTER_COLUMN + IF_EXISTS + COL_MEDIA_YEAR + INTEGER);
 					executeUpdate(connection, ALTER_TABLE + TABLE_NAME + ALTER_COLUMN + IF_EXISTS + COL_TVSEASON + INTEGER);
 				}
+				case (7) -> {
+					LOGGER.debug("creating index " + IF_NOT_EXISTS + TABLE_NAME + CONSTRAINT_SEPARATOR + COL_TMDBID  + IDX_MARKER);
+					executeUpdate(connection, CREATE_INDEX + IF_NOT_EXISTS + TABLE_NAME + CONSTRAINT_SEPARATOR + COL_TMDBID  + IDX_MARKER + ON + TABLE_NAME + "(" + COL_TMDBID + ")");
+					LOGGER.debug("creating index " + IF_NOT_EXISTS + TABLE_NAME + CONSTRAINT_SEPARATOR + COL_IMDBID  + IDX_MARKER);
+					executeUpdate(connection, CREATE_INDEX + IF_NOT_EXISTS + TABLE_NAME + CONSTRAINT_SEPARATOR + COL_IMDBID  + IDX_MARKER + ON + TABLE_NAME + "(" + COL_IMDBID + ")");
+				}
 				default -> {
 					throw new IllegalStateException(
 						getMessage(LOG_UPGRADING_TABLE_MISSING, DATABASE_NAME, TABLE_NAME, version, TABLE_VERSION)
@@ -362,7 +371,9 @@ public class MediaTableVideoMetadata extends MediaTable {
 				CONSTRAINT + TABLE_NAME + CONSTRAINT_SEPARATOR + COL_FILEID + FK_MARKER + FOREIGN_KEY + "(" + COL_FILEID + ")" + REFERENCES + MediaTableFiles.REFERENCE_TABLE_COL_ID + ON_DELETE_CASCADE +
 			")",
 			CREATE_INDEX + TABLE_NAME + CONSTRAINT_SEPARATOR + "BASIC_COLUMNS" + IDX_MARKER + ON + TABLE_NAME + "(" + BASIC_COLUMNS + ")",
-			CREATE_INDEX + TABLE_NAME + CONSTRAINT_SEPARATOR + COL_TMDBID  + CONSTRAINT_SEPARATOR + COL_IMDBID  + CONSTRAINT_SEPARATOR + COL_API_VERSION + IDX_MARKER + ON + TABLE_NAME + "(" + COL_TMDBID + COMMA + COL_IMDBID + COMMA + COL_API_VERSION + ")"
+			CREATE_INDEX + TABLE_NAME + CONSTRAINT_SEPARATOR + COL_TMDBID  + CONSTRAINT_SEPARATOR + COL_IMDBID  + CONSTRAINT_SEPARATOR + COL_API_VERSION + IDX_MARKER + ON + TABLE_NAME + "(" + COL_TMDBID + COMMA + COL_IMDBID + COMMA + COL_API_VERSION + ")",
+			CREATE_INDEX + TABLE_NAME + CONSTRAINT_SEPARATOR + COL_TMDBID  + IDX_MARKER + ON + TABLE_NAME + "(" + COL_TMDBID + ")",
+			CREATE_INDEX + TABLE_NAME + CONSTRAINT_SEPARATOR + COL_IMDBID  + IDX_MARKER + ON + TABLE_NAME + "(" + COL_IMDBID + ")"
 		);
 	}
 
@@ -457,6 +468,7 @@ public class MediaTableVideoMetadata extends MediaTable {
 				}
 				if (isCreatingNewRecord) {
 					rs.insertRow();
+					connection.commit();
 				} else {
 					rs.updateRow();
 				}
@@ -568,7 +580,7 @@ public class MediaTableVideoMetadata extends MediaTable {
 						metadata.setReleased(getLocalDate(rs, COL_RELEASEDATE));
 						metadata.setRevenue(toLong(rs, COL_REVENUE));
 						if (metadata.isTvEpisode() && metadata.getTvSeriesId() != null) {
-							metadata.setSeriesMetadata(MediaTableTVSeries.getTvSeriesMetadata(connection, metadata.getTvSeriesId()));
+							metadata.setSeriesMetadata(MediaInfoStore.getTvSeriesMetadata(metadata.getTvSeriesId()));
 						}
 						metadata.setTvSeason(toInteger(rs, COL_TVSEASON));
 						metadata.setTvEpisodeNumber(rs.getString(COL_TVEPISODENUMBER));

@@ -20,7 +20,7 @@
 	<artifactId>ums</artifactId>
 	<name>Universal Media Server</name>
 	<packaging>jar</packaging>
-	<version>14.0.0-b2</version>
+	<version>14.6.0-SNAPSHOT</version>
 	<url>https://www.universalmediaserver.com/</url>
 	<inceptionYear>2012</inceptionYear>
 
@@ -53,7 +53,7 @@
 	</issueManagement>
 	<properties>
 		<!-- NSIS needs a version without "-SNAPSHOT" or "-b1" -->
-		<project.version.short>14.0.0</project.version.short>
+		<project.version.short>14.6.0</project.version.short>
 		<project.jre-version>17</project.jre-version>
 		<jgoodies-forms-version>1.9.0</jgoodies-forms-version>
 
@@ -61,7 +61,6 @@
 		<jgoodies-looks-version>2.7.0</jgoodies-looks-version>
 
 		<sevenzip-version>16.02-2.01</sevenzip-version>
-		<twelvemonkeys-imageio-version>3.10.1</twelvemonkeys-imageio-version>
 
 		<project.encoding>UTF-8</project.encoding>
 		<project.build.sourceEncoding>${project.encoding}</project.build.sourceEncoding>
@@ -72,13 +71,13 @@
 
 		<project.binaries-base>https://www.universalmediaserver.com/svn/binaries</project.binaries-base>
 
-		<binary-revision>187</binary-revision>
+		<binary-revision>201</binary-revision>
 
-		<exec-maven-plugin-version>3.2.0</exec-maven-plugin-version>
+		<exec-maven-plugin-version>3.4.1</exec-maven-plugin-version>
 		<maven-antrun-plugin-version>3.1.0</maven-antrun-plugin-version>
-		<git-commit-id-plugin-version>7.0.0</git-commit-id-plugin-version>
+		<git-commit-id-plugin-version>9.0.1</git-commit-id-plugin-version>
 		<maven-assembly-plugin-version>3.7.1</maven-assembly-plugin-version>
-		<maven-enforcer-plugin-version>3.4.1</maven-enforcer-plugin-version>
+		<maven-enforcer-plugin-version>3.5.0</maven-enforcer-plugin-version>
 
 		<!--
 			org.slf4j:slf4j-api is shared with
@@ -93,13 +92,7 @@
 
 			Check the org.slf4j:slf4j-api version of the other libraries before upgrading
 		-->
-		<slf4j-api-version>2.0.13</slf4j-api-version>
-
-		<!--
-			ch.qos.logback:logback-classic and logback-core is shared with
-				- net.pms:ums
-		-->
-		<logback-version>1.5.6</logback-version>
+		<slf4j-api-version>2.0.16</slf4j-api-version>
 
 		<!--
 			com.fasterxml.jackson.core:logback-classic and logback-core is shared with
@@ -107,9 +100,9 @@
 				- su.litvak.chromecast:api-v2
 				- fm.last:coverartarchive-api
 		-->
-		<jackson.version>2.16.1</jackson.version>
+		<jackson.version>2.18.0</jackson.version>
 
-		<surefire-version>3.2.5</surefire-version>
+		<surefire-version>3.5.1</surefire-version>
 
 		<!--
 			net.java.dev.jna:jna-platform is shared with
@@ -118,9 +111,10 @@
 
 			Check the net.java.dev.jna:jna-platform version of the other libraries before upgrading
 		-->
-		<jna-version>5.14.0</jna-version>
+		<jna-version>5.15.0</jna-version>
 
-		<junit5.version>5.10.1</junit5.version>
+		<junit5.version>5.11.2</junit5.version>
+		<jetty.version>12.0.14</jetty.version>
 		<maven.compiler.release>${project.jre-version}</maven.compiler.release>
 	</properties>
 	<dependencies>
@@ -155,7 +149,7 @@
 		<dependency>
 			<groupId>commons-codec</groupId>
 			<artifactId>commons-codec</artifactId>
-			<version>1.16.0</version>
+			<version>1.17.1</version>
 		</dependency>
 		<dependency>
 			<groupId>commons-configuration</groupId>
@@ -177,7 +171,7 @@
 		<dependency>
 			<groupId>commons-logging</groupId>
 			<artifactId>commons-logging</artifactId>
-			<version>1.2</version>
+			<version>1.3.4</version>
 		</dependency>
 		<dependency>
 			<groupId>commons-io</groupId>
@@ -188,12 +182,12 @@
 
 				Check the commons-io:commons-io version of the libraries before upgrading
 			-->
-			<version>2.16.1</version>
+			<version>2.17.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>
-			<version>3.14.0</version>
+			<version>3.17.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
@@ -209,13 +203,13 @@
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
-			<version>2.2.224</version>
+			<version>2.3.232</version>
 		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
 			<!-- Check the org.slf4j:slf4j-api version of the other libraries before upgrading -->
-			<version>${logback-version}</version>
+			<version>1.5.8</version>
 			<exclusions>
 				<exclusion>
 					<groupId>org.slf4j</groupId>
@@ -226,20 +220,13 @@
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-core</artifactId>
-			<version>${logback-version}</version>
+			<version>1.5.8</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.code.gson</groupId>
 			<artifactId>gson</artifactId>
-			<version>2.10.1</version>
+			<version>2.11.0</version>
 		</dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty</artifactId> <!-- Use 'netty-all' for 4.0 or above -->
-			<version>3.10.6.Final</version>
-			<scope>compile</scope>
-		</dependency>
-
 		<!-- maven replacement for nsisant-1.2.jar -->
 		<dependency>
 			<groupId>maven</groupId>
@@ -266,7 +253,7 @@
 		<dependency>
 			<groupId>org.apache.xmlgraphics</groupId>
 			<artifactId>batik-svgrasterizer</artifactId>
-			<version>1.17</version>
+			<version>1.18</version>
 			<exclusions>
 				<exclusion>
 					<groupId>commons-io</groupId>
@@ -289,77 +276,77 @@
 		<dependency>
 			<groupId>com.twelvemonkeys.imageio</groupId>
 			<artifactId>imageio-batik</artifactId>
-			<version>${twelvemonkeys-imageio-version}</version>
+			<version>3.11.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.twelvemonkeys.imageio</groupId>
 			<artifactId>imageio-bmp</artifactId>
-			<version>${twelvemonkeys-imageio-version}</version>
+			<version>3.11.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.twelvemonkeys.imageio</groupId>
 			<artifactId>imageio-core</artifactId>
-			<version>${twelvemonkeys-imageio-version}</version>
+			<version>3.11.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.twelvemonkeys.imageio</groupId>
 			<artifactId>imageio-icns</artifactId>
-			<version>${twelvemonkeys-imageio-version}</version>
+			<version>3.11.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.twelvemonkeys.imageio</groupId>
 			<artifactId>imageio-iff</artifactId>
-			<version>${twelvemonkeys-imageio-version}</version>
+			<version>3.11.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.twelvemonkeys.imageio</groupId>
 			<artifactId>imageio-jpeg</artifactId>
-			<version>${twelvemonkeys-imageio-version}</version>
+			<version>3.11.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.twelvemonkeys.imageio</groupId>
 			<artifactId>imageio-hdr</artifactId>
-			<version>${twelvemonkeys-imageio-version}</version>
+			<version>3.11.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.twelvemonkeys.imageio</groupId>
 			<artifactId>imageio-metadata</artifactId>
-			<version>${twelvemonkeys-imageio-version}</version>
+			<version>3.11.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.twelvemonkeys.imageio</groupId>
 			<artifactId>imageio-pcx</artifactId>
-			<version>${twelvemonkeys-imageio-version}</version>
+			<version>3.11.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.twelvemonkeys.imageio</groupId>
 			<artifactId>imageio-pict</artifactId>
-			<version>${twelvemonkeys-imageio-version}</version>
+			<version>3.11.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.twelvemonkeys.imageio</groupId>
 			<artifactId>imageio-pnm</artifactId>
-			<version>${twelvemonkeys-imageio-version}</version>
+			<version>3.11.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.twelvemonkeys.imageio</groupId>
 			<artifactId>imageio-psd</artifactId>
-			<version>${twelvemonkeys-imageio-version}</version>
+			<version>3.11.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.twelvemonkeys.imageio</groupId>
 			<artifactId>imageio-sgi</artifactId>
-			<version>${twelvemonkeys-imageio-version}</version>
+			<version>3.11.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.twelvemonkeys.imageio</groupId>
 			<artifactId>imageio-tga</artifactId>
-			<version>${twelvemonkeys-imageio-version}</version>
+			<version>3.11.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.twelvemonkeys.imageio</groupId>
 			<artifactId>imageio-tiff</artifactId>
-			<version>${twelvemonkeys-imageio-version}</version>
+			<version>3.11.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.sejda.imageio</groupId>
@@ -449,13 +436,14 @@
 		</dependency>
 		<dependency>
 			<groupId>org.jupnp</groupId>
-			<artifactId>org.jupnp</artifactId>
-			<version>2.7.1</version>
-		</dependency>
-		<dependency>
-			<groupId>org.jupnp</groupId>
 			<artifactId>org.jupnp.support</artifactId>
-			<version>2.7.1</version>
+			<version>3.0.2</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-api</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
@@ -491,7 +479,7 @@
 		<dependency>
 			<groupId>com.ibm.icu</groupId>
 			<artifactId>icu4j</artifactId>
-			<version>74.2</version>
+			<version>75.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.code.findbugs</groupId>
@@ -553,7 +541,7 @@
 			<!-- Check the org.slf4j:slf4j-api version of the other libraries before upgrading -->
 			<!-- Check the net.java.dev.jna:jna version of the other libraries before upgrading -->
 			<!-- Check the net.java.dev.jna:jna-platform version of the other libraries before upgrading -->
-			<version>6.5.0</version>
+			<version>6.6.5</version>
 			<exclusions>
 				<exclusion>
 					<groupId>org.slf4j</groupId>
@@ -576,24 +564,9 @@
 			<version>2.0.2</version>
 		</dependency>
 		<dependency>
-			<groupId>com.sun.xml.messaging.saaj</groupId>
-			<artifactId>saaj-impl</artifactId>
-			<version>3.0.3</version>
-			<exclusions>
-				<exclusion>
-					<groupId>jakarta.activation</groupId>
-					<artifactId>jakarta.activation-api</artifactId>
-				</exclusion>
-				<exclusion>
-					<groupId>org.eclipse.angus</groupId>
-					<artifactId>angus-activation</artifactId>
-				</exclusion>
-			</exclusions>
-		</dependency>
-		<dependency>
 			<groupId>com.sun.xml.bind</groupId>
 			<artifactId>jaxb-impl</artifactId>
-			<version>4.0.4</version>
+			<version>4.0.5</version>
 			<exclusions>
 				<exclusion>
 					<groupId>jakarta.activation</groupId>
@@ -614,7 +587,7 @@
 		<dependency>
 			<groupId>com.zaxxer</groupId>
 			<artifactId>HikariCP</artifactId>
-			<version>5.1.0</version>
+			<version>6.0.0</version>
 			<exclusions>
 				<exclusion>
 					<groupId>org.slf4j</groupId>
@@ -664,15 +637,69 @@
 			<version>0.10.2</version>
 		</dependency>
 		<dependency>
-			<groupId>jakarta.servlet</groupId>
-			<artifactId>jakarta.servlet-api</artifactId>
-			<version>6.0.0</version>
-			<type>jar</type>
-		</dependency>
-		<dependency>
 			<groupId>com.universalmediaserver</groupId>
 			<artifactId>tmdbapi</artifactId>
-			<version>0.2</version>
+			<version>1.0.0</version>
+			<exclusions>
+				<exclusion>
+					<groupId>com.google.code.gson</groupId>
+					<artifactId>gson</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.jetty.ee10</groupId>
+			<artifactId>jetty-ee10-servlet</artifactId>
+			<version>${jetty.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-api</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.jetty.http2</groupId>
+			<artifactId>jetty-http2-server</artifactId>
+			<version>${jetty.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-api</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.jetty</groupId>
+			<artifactId>jetty-client</artifactId>
+			<version>${jetty.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-api</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>de.sfuhrm</groupId>
+			<artifactId>radiobrowser4j</artifactId>
+			<version>3.1.0</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-api</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>com.google.code.gson</groupId>
+					<artifactId>gson</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<!-- jsoup HTML parser library @ https://jsoup.org/ -->
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>1.18.1</version>
 		</dependency>
 	</dependencies>
 	<build>
@@ -898,12 +925,14 @@
 			<plugin>
 				<groupId>com.github.eirslett</groupId>
 				<artifactId>frontend-maven-plugin</artifactId>
-				<version>1.15.0</version>
+				<version>1.15.1</version>
 				<configuration>
 					<installDirectory>react-client</installDirectory>
 					<workingDirectory>react-client</workingDirectory>
-					<nodeVersion>v18.19.0</nodeVersion>
-					<yarnVersion>v1.22.19</yarnVersion>
+					<nodeDownloadRoot>https://nodejs.org/download/release/</nodeDownloadRoot>
+					<nodeVersion>v20.12.2</nodeVersion>
+					<yarnVersion>v1.22.22</yarnVersion>
+					<yarnInheritsProxyConfigFromMaven>false</yarnInheritsProxyConfigFromMaven>					
 					<environmentVariables>
 						<PUBLIC_URL>/</PUBLIC_URL>
 					</environmentVariables>
@@ -1243,7 +1272,7 @@
 					<plugin>
 						<groupId>org.digitalmediaserver</groupId>
 						<artifactId>nsis-maven-plugin</artifactId>
-						<version>1.0.5</version>
+						<version>1.0.6</version>
 						<configuration>
 							<makensisExecutable>${project.external-resources}/windows/nsis/makensis.exe</makensisExecutable>
 							<makensisExecutableLinux>makensis</makensisExecutableLinux>
@@ -3450,12 +3479,12 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-checkstyle-plugin</artifactId>
-						<version>3.3.1</version>
+						<version>3.5.0</version>
 						<dependencies>
 							<dependency>
 								<groupId>com.puppycrawl.tools</groupId>
 								<artifactId>checkstyle</artifactId>
-								<version>10.12.7</version>
+								<version>10.18.2</version>
 							</dependency>
 						</dependencies>
 						<configuration>

@@ -1,7 +1,7 @@
 # Universal Media Server
 ![Universal Media Server CI](https://github.com/UniversalMediaServer/UniversalMediaServer/workflows/CI/badge.svg) [![Crowdin](https://badges.crowdin.net/universalmediaserver/localized.svg)](https://crowdin.com/project/universalmediaserver)
 
-[<img align="right" src="https://github.com/UniversalMediaServer/UniversalMediaServer/blob/main/src/main/resources/images/logo.png?raw=true" alt="Universal Media Server" width="256" height="auto"/>][1] Universal Media Server is a DLNA-compliant UPnP Media Server.
+[<img align="right" src="https://github.com/UniversalMediaServer/UniversalMediaServer/blob/main/src/main/resources/images/logo.png?raw=true" alt="Universal Media Server" width="256" height="auto"/>][1] Universal Media Server is a DLNA, UPnP and HTTP/S Media Server.
 It is capable of sharing video, audio and images between most modern devices.
 It was originally based on PS3 Media Server by shagrath, in order to ensure greater stability and file-compatibility.
 
@@ -21,18 +21,20 @@ To Run:
 * Add Line "TranscodeAudio=WAV" to your device.conf.
 
 
-## Current Project Developers
+## Current Project Members
 
 * [ik666][32]
 * [js-kyle][31]
+* [mik_s][7]
 * [SubJunk][3]
 * [SurfaceS][33]
 * [valib][5]
 
-## Current Forum Moderators
+## Sponsors
 
-* [mik_s][7]
-* [squadjot][30]
+* [Architecture of Sales][35]
+
+[Become a sponsor][36]
 
 ## Links
 
@@ -42,7 +44,6 @@ To Run:
 * [Official Releases][11]
 * [Issue tracker][12]
 * [Knowledge Base][13]
-* [Wiki][14]
 
 ## Thanks
 
@@ -70,6 +71,7 @@ To Run:
 * meskibob
 * Optimus_prime
 * otmanix
+* [squadjot][30]
 
 ##### Thanks for significant/frequent language translations:
 
@@ -103,7 +105,6 @@ To Run:
   [11]: https://www.universalmediaserver.com/downloads/
   [12]: https://github.com/UniversalMediaServer/UniversalMediaServer/issues?state=open
   [13]: https://support.universalmediaserver.com
-  [14]: https://github.com/UniversalMediaServer/UniversalMediaServer/wiki
   [15]: https://www.universalmediaserver.com/forum/memberlist.php?mode=viewprofile&u=4025
   [16]: https://github.com/josepma
   [17]: https://github.com/kirvx
@@ -124,3 +125,5 @@ To Run:
   [32]: https://github.com/ik666
   [33]: https://github.com/SurfaceS
   [34]: https://github.com/threedguru
+  [35]: https://architectureofsales.com
+  [36]: https://www.patreon.com/universalmediaserver

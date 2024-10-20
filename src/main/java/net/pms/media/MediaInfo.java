@@ -24,6 +24,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import net.pms.configuration.FormatConfiguration;
 import net.pms.dlna.DLNAThumbnail;
 import net.pms.dlna.DLNAThumbnailInputStream;
@@ -56,6 +57,8 @@ public class MediaInfo implements Cloneable {
 	 */
 	protected static final Map<String, AudioVariantInfo> AUDIO_OR_VIDEO_CONTAINERS = getAudioOrVideoContainers();
 
+	private final AtomicBoolean parsing = new AtomicBoolean(false);
+
 	// Stored in database
 	private Long fileId;
 	private String lastParser;
@@ -87,10 +90,7 @@ public class MediaInfo implements Cloneable {
 	 * Not stored in database.
 	 */
 	private Integer dvdtrack;
-
 	private long lastExternalLookup = 0;
-	private final Object parsingLock = new Object();
-	private boolean parsing = false;
 
 	public void resetParser() {
 		this.lastParser = null;
@@ -635,9 +635,7 @@ public class MediaInfo implements Cloneable {
 	 * @since 1.50.0
 	 */
 	public boolean isParsing() {
-		synchronized (parsingLock) {
-			return parsing;
-		}
+		return parsing.get();
 	}
 
 	/**
@@ -645,9 +643,7 @@ public class MediaInfo implements Cloneable {
 	 * @since 1.50.0
 	 */
 	public void setParsing(boolean parsing) {
-		synchronized (parsingLock) {
-			this.parsing = parsing;
-		}
+		this.parsing.set(parsing);
 	}
 
 	public long getLastExternalLookup() {

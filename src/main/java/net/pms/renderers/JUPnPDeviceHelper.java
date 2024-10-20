@@ -35,12 +35,9 @@ import net.pms.PMS;
 import net.pms.configuration.RendererConfiguration;
 import net.pms.configuration.RendererConfigurations;
 import net.pms.configuration.UmsConfiguration;
-import net.pms.dlna.DidlHelper;
 import net.pms.dlna.protocolinfo.DeviceProtocolInfo;
 import net.pms.network.mediaserver.MediaServer;
 import net.pms.network.mediaserver.jupnp.controlpoint.UmsSubscriptionCallback;
-import net.pms.store.StoreItem;
-import net.pms.store.StoreResource;
 import net.pms.util.XmlUtils;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.lang.StringUtils;
@@ -726,28 +723,6 @@ public class JUPnPDeviceHelper {
 		send(dev, AV_TRANSPORT_SERVICE, "Play", "Speed", "1");
 	}
 
-	/**
-	 * Seems not used.
-	 */
-	public static void play(String uri, String name, Renderer renderer) {
-		StoreResource d = renderer.getMediaStore().getValidResource(uri, name);
-		if (d != null) {
-			play(d, renderer);
-		}
-	}
-
-	/**
-	 * Seems not used.
-	 */
-	public static void play(StoreResource d, Renderer renderer) {
-		StoreResource resource = d.getParent() == null ? renderer.getMediaStore().getTemp().add(d) : d;
-		if (resource instanceof StoreItem item) {
-			Device dev = getDevice(renderer.getUUID());
-			setAVTransportURI(dev, item.getMediaURL(), renderer.isPushMetadata() ? DidlHelper.getDidlString(resource) : null);
-			play(dev);
-		}
-	}
-
 	public static void pause(Device dev) {
 		send(dev, AV_TRANSPORT_SERVICE, "Pause");
 	}
@@ -843,7 +818,7 @@ public class JUPnPDeviceHelper {
 
 	public static void setAVTransportURI(Device dev, String uri, String metaData) {
 		send(dev, AV_TRANSPORT_SERVICE, "SetAVTransportURI", "CurrentURI", uri,
-			"CurrentURIMetaData", metaData != null ? DidlHelper.unEncodeXML(metaData) : null);
+			"CurrentURIMetaData", metaData != null ? unEncodeXML(metaData) : null);
 	}
 
 	/**
@@ -986,6 +961,19 @@ public class JUPnPDeviceHelper {
 		} catch (IOException | SAXException e) {
 			LOGGER.debug("Error parsing xml: " + e);
 		}
+	}
+
+	/**
+	 * Removes xml character representations.
+	 *
+	 * @param s String to be cleaned
+	 * @return Encoded String
+	 */
+	private static String unEncodeXML(String s) {
+		// Note: ampersand substitution must be first in order to undo double
+		// transformations
+		// TODO: support ' and " if/when required, see encodeXML() above
+		return s.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">");
 	}
 
 }
