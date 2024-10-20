@@ -317,8 +317,7 @@ public class FFmpegAudio extends FFMpegVideo {
 			PlayerUtil.isAudio(resource, Format.Identifier.THREEGA) ||
 			PlayerUtil.isAudio(resource, Format.Identifier.THREEG2A) ||
 			PlayerUtil.isAudio(resource, Format.Identifier.THD) ||
-			PlayerUtil.isAudio(resource, Format.Identifier.TTA) 
-||
+			PlayerUtil.isAudio(resource, Format.Identifier.TTA) ||
 			PlayerUtil.isAudio(resource, Format.Identifier.WAV) ||
 			PlayerUtil.isAudio(resource, Format.Identifier.WMA) ||
 			PlayerUtil.isAudio(resource, Format.Identifier.WV) ||
