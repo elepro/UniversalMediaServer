@@ -219,7 +219,7 @@ public class FFmpegAudio extends FFMpegVideo {
 			}
 		}
 
-		if (params.getMediaRenderer().isTranscodeToWAV()) {
+		if (encodingFormat.isTranscodeToWAV()) {
 			cmdList.add("-y");
 			String tempfile = System.getProperty("java.io.tmpdir");
 			if(!tempfile.endsWith(java.io.File.separator))
